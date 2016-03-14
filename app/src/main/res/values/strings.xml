@@ -11,7 +11,18 @@
     <string name="format_location_bearings">
         Latitude: <xliff:g id="lat">%1.4f</xliff:g>\n
         Longtitude: <xliff:g id="long">%2.4f</xliff:g>\n
-        Bearing: <xliff:g id="long">%3.2f</xliff:g>
+        Bearing: <xliff:g id="bear">%3.2f</xliff:g>\n
+        Distance: <xliff:g id="dist">%4.2f</xliff:g>
+    </string>
+
+    <string name="format_sensor">
+        Azimuth: <xliff:g id="x">%1.0f</xliff:g>\n
+        Pitch: <xliff:g id="y">%2.0f</xliff:g>\n
+        Roll: <xliff:g id="z">%3.0f</xliff:g>
+    </string>
+
+    <string name="format_azimuth">
+        azimuth: <xliff:g id="x">%1.0f</xliff:g>
     </string>
 
 </resources>
