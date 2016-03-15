@@ -1,5 +1,7 @@
 <resources xmlns:xliff="http://schemas.android.com/tools">
 
+    <color name="red">#99ffff</color>
+
     <string name="app_name">CameraMarkersOverlay</string>
     <string name="action_settings">Settings</string>
 
