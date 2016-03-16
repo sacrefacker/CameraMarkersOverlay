@@ -41,11 +41,10 @@ public class FragmentMain extends Fragment implements SensorEventListener {
     private static final int SHOW_TOMSK = 2;
 
     private static final double FIELD_OF_VIEW = 40.0;
-    private static final double ORIENTATION_CORRECTION = 90.0;
+    private static final double AZIMUTH_ORIENTATION_CORRECTION = -90.0;
     private static final double IDEAL_ROLL = 90.0;
     private static final double ROLL_TOLERANCE = 10.0;
     private static final double PITCH_TOLERANCE = 10.0;
-
 
     private static final Location LOCATION_MOSCOW;
     private static final Location LOCATION_TOMSK;
@@ -84,8 +83,8 @@ public class FragmentMain extends Fragment implements SensorEventListener {
     private float[] mGeomagnetic = null;
     private float[] mOrientationAverage;
 
-    private double mRoll;
     private int mCurrentOverlay = SHOW_NOTHING;
+    private double mRoll;
     private double mAzimuthMoscow;
     private double mAzimuthTomsk;
 
@@ -149,8 +148,7 @@ public class FragmentMain extends Fragment implements SensorEventListener {
     }
 
     @Override
-    public View onCreateView(LayoutInflater inflater, ViewGroup container,
-                             Bundle savedInstanceState) {
+    public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
 
         View rootView = inflater.inflate(R.layout.fragment_main, container, false);
 
@@ -208,7 +206,8 @@ public class FragmentMain extends Fragment implements SensorEventListener {
         mOrientationTextView = (TextView) rootView.findViewById(R.id.text_orientation);
 
         mFrameLayout = (FrameLayout) rootView.findViewById(R.id.frame_for_overlay);
-        mOverlayView = new OverlayView(mContext, BitmapFactory.decodeResource(getResources(), android.R.drawable.ic_delete));
+        mOverlayView = new OverlayView(mContext, BitmapFactory.decodeResource(getResources(),
+                android.R.drawable.ic_delete));
         mFrameLayout.addView(mOverlayView);
 
         return rootView;
@@ -285,7 +284,7 @@ public class FragmentMain extends Fragment implements SensorEventListener {
                 mOrientationAverage = lowPass(orientationMatrix, mOrientationAverage);
 
                 // Assuming the device is on it's right side and camera away from user
-                double azimuth = Math.toDegrees(mOrientationAverage[0]) - ORIENTATION_CORRECTION;
+                double azimuth = Math.toDegrees(mOrientationAverage[0]) + AZIMUTH_ORIENTATION_CORRECTION;
                 double pitch = Math.toDegrees(mOrientationAverage[1]);
                 mRoll = Math.toDegrees(mOrientationAverage[2]);
                 azimuth = formatPiMinusPi(azimuth);
