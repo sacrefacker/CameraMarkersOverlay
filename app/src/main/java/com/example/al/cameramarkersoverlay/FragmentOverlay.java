@@ -6,8 +6,8 @@ import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
-import android.graphics.Color;
 import android.graphics.Paint;
+import android.hardware.Camera;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
@@ -27,6 +27,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
 
+import java.io.IOException;
 import java.util.ArrayList;
 
 public class FragmentOverlay extends Fragment implements SensorEventListener {
@@ -70,9 +71,6 @@ public class FragmentOverlay extends Fragment implements SensorEventListener {
     private Sensor mAccelerometer;
     private Sensor mMagnetometer;
 
-    private FrameLayout mFrameLayout;
-    private OverlayView mOverlayView;
-
     // Storage for Sensor readings
     private float[] mGravity = null;
     private float[] mGeomagnetic = null;
@@ -81,6 +79,15 @@ public class FragmentOverlay extends Fragment implements SensorEventListener {
     private double mAzimuth;
     private double mPitch;
     private double mRoll;
+
+    // Views
+    private FrameLayout mOverlayFrame;
+    private OverlayView mOverlaySurface;
+    // For camera
+    private Camera mCamera;
+    private FrameLayout mFrameLayout;
+    private SurfaceHolder mSurfaceHolder;
+    private boolean mIsPreviewing;
 
     public FragmentOverlay() {
         // Required empty public constructor
@@ -95,7 +102,8 @@ public class FragmentOverlay extends Fragment implements SensorEventListener {
             mLocation = savedInstanceState.getParcelable(BUNDLE_LOCATION);
         }
 
-        if (null == (mLocationManager = (LocationManager) mContext.getSystemService(Context.LOCATION_SERVICE))) {
+        mLocationManager = (LocationManager) mContext.getSystemService(Context.LOCATION_SERVICE);
+        if (mLocationManager == null) {
             Log.e(LOG_TAG, "error getting location manager");
         }
 
@@ -132,10 +140,24 @@ public class FragmentOverlay extends Fragment implements SensorEventListener {
 
         View rootView = inflater.inflate(R.layout.fragment_overlay, container, false);
 
-        mFrameLayout = (FrameLayout) rootView.findViewById(R.id.overlay_view);
-        mOverlayView = new OverlayView(mContext, BitmapFactory.decodeResource(getResources(),
+        mFrameLayout = (FrameLayout) rootView.findViewById(R.id.frame_layout);
+
+
+//        mOverlayFrame = (FrameLayout) rootView.findViewById(R.id.overlay_frame);
+        mOverlaySurface = new OverlayView(mContext, BitmapFactory.decodeResource(getResources(),
                 android.R.drawable.ic_delete));
-        mFrameLayout.addView(mOverlayView);
+        mFrameLayout.addView(mOverlaySurface);
+
+        // Setup SurfaceView for previewing camera image
+//        SurfaceView surfaceView = (SurfaceView) rootView.findViewById(R.id.camera_surface);
+        SurfaceView surfaceView = new SurfaceView(mContext);
+        mFrameLayout.addView(surfaceView);
+        // Get SurfaceHolder for accessing the SurfaceView's Surface
+        mSurfaceHolder = surfaceView.getHolder();
+        // Set callback Object for the SurfaceHolder
+        mSurfaceHolder.addCallback(mSurfaceHolderCallback);
+
+//        mOverlayFrame.addView(mOverlaySurface);
 
         return rootView;
     }
@@ -162,6 +184,17 @@ public class FragmentOverlay extends Fragment implements SensorEventListener {
 
         mSensorManager.registerListener(this, mAccelerometer, SensorManager.SENSOR_DELAY_UI);
         mSensorManager.registerListener(this, mMagnetometer, SensorManager.SENSOR_DELAY_UI);
+
+        if (null == mCamera) {
+            try {
+                // Returns first back-facing camera or null if no camera is available.
+                // May take a long time to complete. Consider moving this to an AsyncTask
+                mCamera = Camera.open();
+            }
+            catch (RuntimeException e) {
+                Log.e(LOG_TAG, "Failed to acquire camera");
+            }
+        }
     }
 
     @Override
@@ -214,10 +247,12 @@ public class FragmentOverlay extends Fragment implements SensorEventListener {
             else if (average - current < -180){
                 correction = -360;
             }
-            orientationAverage[0] = (float) Math.toRadians(average + (current - average + correction) * (1 - LOW_PASS_PERCENT));
+            orientationAverage[0] = (float) Math.toRadians(average +
+                    (current - average + correction) * (1 - LOW_PASS_PERCENT));
             // pitch and roll are fine
             for (int i = 1; i < orientationMatrix.length; i++) {
-                orientationAverage[i] = orientationAverage[i] + (orientationMatrix[i] - orientationAverage[i]) * (1 - LOW_PASS_PERCENT);
+                orientationAverage[i] = orientationAverage[i] +
+                        (orientationMatrix[i] - orientationAverage[i]) * (1 - LOW_PASS_PERCENT);
             }
         }
         return orientationAverage;
@@ -251,9 +286,12 @@ public class FragmentOverlay extends Fragment implements SensorEventListener {
 
         mSensorManager.unregisterListener(this);
 
+        releaseCameraResources();
+
         super.onPause();
     }
 
+    // Overlay part
 
     private class OverlayView extends SurfaceView implements SurfaceHolder.Callback {
         private static final float NULL_FLOAT = -1.0f;
@@ -291,7 +329,7 @@ public class FragmentOverlay extends Fragment implements SensorEventListener {
                     && mRoll > IDEAL_ROLL - ROLL_TOLERANCE && mRoll < IDEAL_ROLL + ROLL_TOLERANCE
                     && mPitch > -PITCH_TOLERANCE && mPitch < PITCH_TOLERANCE) {
 
-                canvas.drawColor(Color.DKGRAY);
+//                canvas.drawColor(0, PorterDuff.Mode.CLEAR);
 
                 mX = mCanvasHalfWidth + ((float) ((mRoll - IDEAL_ROLL) / ROLL_TOLERANCE * mCanvasHalfWidth));
 
@@ -317,7 +355,7 @@ public class FragmentOverlay extends Fragment implements SensorEventListener {
                 }
             }
             else {
-                canvas.drawColor(Color.BLACK);
+//                canvas.drawColor(0, PorterDuff.Mode.CLEAR);
                 mX = NULL_FLOAT;
             }
         }
@@ -391,5 +429,79 @@ public class FragmentOverlay extends Fragment implements SensorEventListener {
                 mDrawingThread.interrupt();
         }
     }
+
+    // Camera part
+
+    private void startPreview() {
+        if (null != mCamera) {
+            try {
+                mCamera.startPreview();
+                mIsPreviewing = true;
+            } catch (Exception e) {
+                Log.e(LOG_TAG, "Failed to start preview");
+            }
+        }
+    }
+
+    private void stopPreview() {
+        if (null != mCamera && mIsPreviewing) {
+            try {
+                mCamera.stopPreview();
+                mIsPreviewing = false;
+            } catch (Exception e) {
+                Log.e(LOG_TAG, "Failed to stop preview");
+            }
+        }
+    }
+
+    // Release camera so other applications can use it.
+    private void releaseCameraResources() {
+        if (null != mCamera) {
+            mCamera.release();
+            mCamera = null;
+        }
+    }
+
+    // SurfaceHolder callback Object
+    SurfaceHolder.Callback mSurfaceHolderCallback = new SurfaceHolder.Callback() {
+
+        @Override
+        @SuppressWarnings("deprecation")
+        public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
+
+            if (mSurfaceHolder.getSurface() == null) {
+                return;
+            }
+
+            // Shutdown current preview
+            stopPreview();
+
+            mCamera.setDisplayOrientation(90);
+
+            // Initialize preview display
+            try {
+                mCamera.setPreviewDisplay(holder);
+            } catch (IOException e) {
+                Log.e(LOG_TAG, "Failed to set preview display in ");
+            }
+
+            // Start preview
+            try {
+                startPreview();
+            } catch (RuntimeException e) {
+                Log.e(LOG_TAG, "Failed to start preview in surfaceChanged()");
+            }
+        }
+
+        @Override
+        public void surfaceCreated(SurfaceHolder holder) {
+            // Do nothing
+        }
+
+        @Override
+        public void surfaceDestroyed(SurfaceHolder holder) {
+            // Do Nothing
+        }
+    };
 
 }
