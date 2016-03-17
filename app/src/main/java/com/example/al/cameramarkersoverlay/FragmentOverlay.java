@@ -46,27 +46,12 @@ public class FragmentOverlay extends Fragment implements SensorEventListener {
     private static final double ROLL_TOLERANCE = 10.0;
     private static final double PITCH_TOLERANCE = 10.0;
 
-    private static final Location LOCATION_MOSCOW;
-    private static final Location LOCATION_TOMSK;
-    private static final Location LOCATION_LETI;
-
-    static {
-        LOCATION_MOSCOW = new Location(LocationManager.NETWORK_PROVIDER);
-        LOCATION_MOSCOW.setLatitude(55.7500);
-        LOCATION_MOSCOW.setLongitude(37.6167);
-        LOCATION_TOMSK = new Location(LocationManager.NETWORK_PROVIDER);
-        LOCATION_TOMSK.setLatitude(56.5000);
-        LOCATION_TOMSK.setLongitude(84.9667);
-        LOCATION_LETI = new Location(LocationManager.NETWORK_PROVIDER);
-        LOCATION_LETI.setLatitude(59.9765);
-        LOCATION_LETI.setLongitude(30.3208);
-    }
-
     private Context mContext;
 
     private LocationManager mLocationManager;
     private LocationListener mLocationListener;
     private Location mLocation;
+
     private ArrayList<Location> mMarkers;
 
     private SensorManager mSensorManager;
@@ -83,7 +68,7 @@ public class FragmentOverlay extends Fragment implements SensorEventListener {
     private double mRoll;
 
     // Views
-    private FrameLayout mOverlayFrame;
+//    private FrameLayout mOverlayFrame;
     private OverlayView mOverlaySurface;
     // For camera
     private Camera mCamera;
@@ -125,15 +110,26 @@ public class FragmentOverlay extends Fragment implements SensorEventListener {
             }
         };
 
-        mMarkers = new ArrayList<>();
-        mMarkers.add(LOCATION_MOSCOW);
-        mMarkers.add(LOCATION_TOMSK);
-        mMarkers.add(LOCATION_LETI);
+//        mMarkers = new ArrayList<>();
+//        mMarkers.add(LOCATION_MOSCOW);
+//        mMarkers.add(LOCATION_TOMSK);
+//        mMarkers.add(LOCATION_LETI);
+        loadMarkers();
 
         mSensorManager = (SensorManager) mContext.getSystemService(Context.SENSOR_SERVICE);
         mAccelerometer = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         mMagnetometer = mSensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
         mOrientationAverage = new float[3];
+
+        downloadMarkers();
+    }
+
+    private void loadMarkers() {
+        // TODO: load markers with cursor
+    }
+
+    private void downloadMarkers() {
+        new TaskDownloadMarkers(getContext()).execute();
     }
 
 
