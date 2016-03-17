@@ -7,6 +7,8 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Paint;
+import android.graphics.PixelFormat;
+import android.graphics.PorterDuff;
 import android.hardware.Camera;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
@@ -56,8 +58,8 @@ public class FragmentOverlay extends Fragment implements SensorEventListener {
         LOCATION_TOMSK.setLatitude(56.5000);
         LOCATION_TOMSK.setLongitude(84.9667);
         LOCATION_LETI = new Location(LocationManager.NETWORK_PROVIDER);
-        LOCATION_LETI.setLatitude(59.9706);
-        LOCATION_LETI.setLongitude(30.3194);
+        LOCATION_LETI.setLatitude(59.9765);
+        LOCATION_LETI.setLongitude(30.3208);
     }
 
     private Context mContext;
@@ -142,21 +144,23 @@ public class FragmentOverlay extends Fragment implements SensorEventListener {
 
         mFrameLayout = (FrameLayout) rootView.findViewById(R.id.frame_layout);
 
-
-//        mOverlayFrame = (FrameLayout) rootView.findViewById(R.id.overlay_frame);
-        mOverlaySurface = new OverlayView(mContext, BitmapFactory.decodeResource(getResources(),
-                android.R.drawable.ic_delete));
-        mFrameLayout.addView(mOverlaySurface);
-
         // Setup SurfaceView for previewing camera image
 //        SurfaceView surfaceView = (SurfaceView) rootView.findViewById(R.id.camera_surface);
         SurfaceView surfaceView = new SurfaceView(mContext);
+        surfaceView.setZOrderMediaOverlay(false);
         mFrameLayout.addView(surfaceView);
         // Get SurfaceHolder for accessing the SurfaceView's Surface
         mSurfaceHolder = surfaceView.getHolder();
         // Set callback Object for the SurfaceHolder
         mSurfaceHolder.addCallback(mSurfaceHolderCallback);
 
+        mOverlaySurface = new OverlayView(mContext, BitmapFactory.decodeResource(getResources(),
+                android.R.drawable.ic_delete));
+        mOverlaySurface.setZOrderMediaOverlay(true);
+        SurfaceHolder overlayHolder = mOverlaySurface.getHolder();
+        overlayHolder.setFormat(PixelFormat.TRANSPARENT);
+        mFrameLayout.addView(mOverlaySurface);
+//        mOverlayFrame = (FrameLayout) rootView.findViewById(R.id.overlay_frame);
 //        mOverlayFrame.addView(mOverlaySurface);
 
         return rootView;
@@ -329,7 +333,7 @@ public class FragmentOverlay extends Fragment implements SensorEventListener {
                     && mRoll > IDEAL_ROLL - ROLL_TOLERANCE && mRoll < IDEAL_ROLL + ROLL_TOLERANCE
                     && mPitch > -PITCH_TOLERANCE && mPitch < PITCH_TOLERANCE) {
 
-//                canvas.drawColor(0, PorterDuff.Mode.CLEAR);
+                canvas.drawColor(0, PorterDuff.Mode.CLEAR);
 
                 mX = mCanvasHalfWidth + ((float) ((mRoll - IDEAL_ROLL) / ROLL_TOLERANCE * mCanvasHalfWidth));
 
@@ -355,7 +359,7 @@ public class FragmentOverlay extends Fragment implements SensorEventListener {
                 }
             }
             else {
-//                canvas.drawColor(0, PorterDuff.Mode.CLEAR);
+                canvas.drawColor(0, PorterDuff.Mode.CLEAR);
                 mX = NULL_FLOAT;
             }
         }
