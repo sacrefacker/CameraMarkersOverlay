@@ -6,13 +6,13 @@
     <string name="action_settings">Settings</string>
 
     <string name="format_location">
-        Latitude: <xliff:g id="lat">%1.4f</xliff:g>\n
-        Longtitude: <xliff:g id="long">%2.4f</xliff:g>\n
+        Latitude: <xliff:g id="lat">%1.6f</xliff:g>\n
+        Longtitude: <xliff:g id="long">%2.6f</xliff:g>\n
     </string>
 
     <string name="format_location_bearings">
-        Latitude: <xliff:g id="lat">%1.4f</xliff:g>\n
-        Longtitude: <xliff:g id="long">%2.4f</xliff:g>\n
+        Latitude: <xliff:g id="lat">%1.6f</xliff:g>\n
+        Longtitude: <xliff:g id="long">%2.6f</xliff:g>\n
         Bearing: <xliff:g id="bear">%3.2f</xliff:g>\n
         Distance: <xliff:g id="dist">%4.2f</xliff:g>
     </string>

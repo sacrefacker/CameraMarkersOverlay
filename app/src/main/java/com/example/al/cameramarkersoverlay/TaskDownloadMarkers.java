@@ -28,8 +28,8 @@ public class TaskDownloadMarkers extends AsyncTask<String, Void, Void> {
         LOCATION_TOMSK.setLongitude(84.9667);
 
         LOCATION_LETI = new Location(LocationManager.NETWORK_PROVIDER);
-        LOCATION_LETI.setLatitude(59.9765);
-        LOCATION_LETI.setLongitude(30.3208);
+        LOCATION_LETI.setLatitude(59.976560);
+        LOCATION_LETI.setLongitude(30.320852);
     }
 
     private final Context mContext;

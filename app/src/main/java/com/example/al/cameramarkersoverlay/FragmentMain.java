@@ -39,6 +39,7 @@ public class FragmentMain extends Fragment implements SensorEventListener {
     private static final int SHOW_NOTHING = 0;
     private static final int SHOW_MOSCOW = 1;
     private static final int SHOW_TOMSK = 2;
+    private static final int SHOW_LETI = 3;
 
     private static final double FIELD_OF_VIEW = 40.0;
     private static final double AZIMUTH_ORIENTATION_CORRECTION = -90.0;
@@ -48,14 +49,20 @@ public class FragmentMain extends Fragment implements SensorEventListener {
 
     private static final Location LOCATION_MOSCOW;
     private static final Location LOCATION_TOMSK;
+    private static final Location LOCATION_LETI;
 
     static {
         LOCATION_MOSCOW = new Location(LocationManager.NETWORK_PROVIDER);
         LOCATION_MOSCOW.setLatitude(55.7500);
         LOCATION_MOSCOW.setLongitude(37.6167);
+
         LOCATION_TOMSK = new Location(LocationManager.NETWORK_PROVIDER);
         LOCATION_TOMSK.setLatitude(56.5000);
         LOCATION_TOMSK.setLongitude(84.9667);
+
+        LOCATION_LETI = new Location(LocationManager.NETWORK_PROVIDER);
+        LOCATION_LETI.setLatitude(59.976560);
+        LOCATION_LETI.setLongitude(30.320852);
     }
 
     private Context mContext;
@@ -73,6 +80,8 @@ public class FragmentMain extends Fragment implements SensorEventListener {
     private TextView mAzimuthMoscowTextView;
     private TextView mLocationTomskTextView;
     private TextView mAzimuthTomskTextView;
+    private TextView mLocationLetiTextView;
+    private TextView mAzimuthLetiTextView;
     private TextView mOrientationTextView;
 
     private FrameLayout mFrameLayout;
@@ -87,6 +96,7 @@ public class FragmentMain extends Fragment implements SensorEventListener {
     private double mRoll;
     private double mAzimuthMoscow;
     private double mAzimuthTomsk;
+    private double mAzimuthLeti;
 
     public FragmentMain() {
         //nothing to see here
@@ -144,6 +154,11 @@ public class FragmentMain extends Fragment implements SensorEventListener {
                     LOCATION_TOMSK.getLongitude(),
                     mLocation.bearingTo(LOCATION_TOMSK),
                     mLocation.distanceTo(LOCATION_TOMSK)));
+            mLocationLetiTextView.setText(String.format(mContext.getString(R.string.format_location_bearings),
+                    LOCATION_LETI.getLatitude(),
+                    LOCATION_LETI.getLongitude(),
+                    mLocation.bearingTo(LOCATION_LETI),
+                    mLocation.distanceTo(LOCATION_LETI)));
         }
     }
 
@@ -200,9 +215,25 @@ public class FragmentMain extends Fragment implements SensorEventListener {
             }
 
         });
+        mLocationLetiTextView = (TextView) rootView.findViewById(R.id.text_location_leti);
+        mLocationLetiTextView.setOnLongClickListener(new View.OnLongClickListener() {
+            @Override
+            public boolean onLongClick(View v) {
+                openLocationOnMap(LOCATION_LETI);
+                return true;
+            }
+        });
+        mLocationLetiTextView.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                mCurrentOverlay = SHOW_LETI;
+            }
+
+        });
 
         mAzimuthMoscowTextView = (TextView) rootView.findViewById(R.id.text_azimuth_moscow);
         mAzimuthTomskTextView = (TextView) rootView.findViewById(R.id.text_azimuth_tomsk);
+        mAzimuthLetiTextView = (TextView) rootView.findViewById(R.id.text_azimuth_leti);
         mOrientationTextView = (TextView) rootView.findViewById(R.id.text_orientation);
 
         mFrameLayout = (FrameLayout) rootView.findViewById(R.id.frame_for_overlay);
@@ -239,10 +270,10 @@ public class FragmentMain extends Fragment implements SensorEventListener {
 
         // Register for network location updates
         try {
-            if (null != mLocationManager.getProvider(LocationManager.NETWORK_PROVIDER)) {
-                mLocationManager.requestLocationUpdates(LocationManager
-                        .NETWORK_PROVIDER, POLLING_FREQ, MIN_DISTANCE, mLocationListener);
-            }
+//            if (null != mLocationManager.getProvider(LocationManager.NETWORK_PROVIDER)) {
+//                mLocationManager.requestLocationUpdates(LocationManager
+//                        .NETWORK_PROVIDER, POLLING_FREQ, MIN_DISTANCE, mLocationListener);
+//            }
             // Register for GPS location updates
             if (null != mLocationManager.getProvider(LocationManager.GPS_PROVIDER)) {
                 mLocationManager.requestLocationUpdates(LocationManager
@@ -281,7 +312,7 @@ public class FragmentMain extends Fragment implements SensorEventListener {
 
                 // Returns the device's orientation given the rotationMatrix
                 SensorManager.getOrientation(rotationMatrix, orientationMatrix);
-                mOrientationAverage = lowPass(orientationMatrix, mOrientationAverage);
+                mOrientationAverage = lowPassFilter(mOrientationAverage, orientationMatrix);
 
                 // Assuming the device is on it's right side and camera away from user
                 double azimuth = Math.toDegrees(mOrientationAverage[0]) + AZIMUTH_ORIENTATION_CORRECTION;
@@ -314,20 +345,38 @@ public class FragmentMain extends Fragment implements SensorEventListener {
                     mAzimuthTomskTextView.setText(String.format(mContext.getString(R.string.format_azimuth),
                             mAzimuthTomsk));
                     checkInFieldOfView(mAzimuthTomsk, mAzimuthTomskTextView);
+
+                    mAzimuthLeti = mLocation.bearingTo(LOCATION_LETI) - azimuth;
+                    mAzimuthLeti = formatPiMinusPi(mAzimuthLeti);
+                    mAzimuthLetiTextView.setText(String.format(mContext.getString(R.string.format_azimuth),
+                            mAzimuthLeti));
+                    checkInFieldOfView(mAzimuthLeti, mAzimuthLetiTextView);
                 }
 
                 // Reset sensor event data arrays
                 mGravity = mGeomagnetic = null;
             }
         }
-
     }
 
-    private float[] lowPass(float[] orientationMatrix, float[] orientationAverage) {
+    private float[] lowPassFilter(float[] orientationAverage, float[] orientationMatrix) {
         if (orientationMatrix.length == orientationAverage.length) {
-            for (int i = 0; i < orientationMatrix.length; i++) {
-                orientationAverage[i] = orientationAverage[i] * LOW_PASS_PERCENT +
-                        orientationMatrix[i] * (1 - LOW_PASS_PERCENT);
+            // azimuth needs a special treatment because it can jump from -180 to 180 and back
+            double average = Math.toDegrees(orientationAverage[0]);
+            double current = Math.toDegrees(orientationMatrix[0]);
+            double correction = 0;
+            if (average - current > 180) {
+                correction = 360;
+            }
+            else if (average - current < -180){
+                correction = -360;
+            }
+            orientationAverage[0] = (float) Math.toRadians(average +
+                    (current - average + correction) * (1 - LOW_PASS_PERCENT));
+            // pitch and roll are fine
+            for (int i = 1; i < orientationMatrix.length; i++) {
+                orientationAverage[i] = orientationAverage[i] +
+                        (orientationMatrix[i] - orientationAverage[i]) * (1 - LOW_PASS_PERCENT);
             }
         }
         return orientationAverage;
@@ -409,6 +458,9 @@ public class FragmentMain extends Fragment implements SensorEventListener {
                     break;
                 case SHOW_TOMSK:
                     azimuth = mAzimuthTomsk;
+                    break;
+                case SHOW_LETI:
+                    azimuth = mAzimuthLeti;
                     break;
             }
             float left = mFrameLayout.getWidth()/2.0f - mBitmapSize/2.0f;

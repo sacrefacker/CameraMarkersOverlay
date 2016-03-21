@@ -28,6 +28,8 @@ public class MarkersDbHelper extends SQLiteOpenHelper {
                 // should be sorted accordingly.
                 MarkersEntry._ID + " INTEGER PRIMARY KEY AUTOINCREMENT," +
 
+                // Может потребоваться not null
+
 //                MarkersEntry.COLUMN_CHANNEL + " INTEGER NOT NULL, " +
 //                MarkersEntry.COLUMN_IMAGE + " TEXT NOT NULL, " +
 //                MarkersEntry.COLUMN_DESCRIPTION + " TEXT NOT NULL," +

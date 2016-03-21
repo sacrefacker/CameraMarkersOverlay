@@ -3,6 +3,7 @@ package com.example.al.cameramarkersoverlay;
 
 import android.content.Context;
 import android.content.Intent;
+import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
@@ -20,6 +21,9 @@ import android.location.LocationManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
+import android.support.v4.app.LoaderManager;
+import android.support.v4.content.CursorLoader;
+import android.support.v4.content.Loader;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
@@ -29,12 +33,17 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
 
+import com.example.al.cameramarkersoverlay.data.MarkersContract;
+
 import java.io.IOException;
 import java.util.ArrayList;
 
-public class FragmentOverlay extends Fragment implements SensorEventListener {
+public class FragmentOverlay extends Fragment
+        implements SensorEventListener, LoaderManager.LoaderCallbacks<Cursor> {
+
     public static final String LOG_TAG = FragmentOverlay.class.getSimpleName();
     public static final String BUNDLE_LOCATION = "location";
+    private static final int MARKER_LOADER = 0;
 
     private static final long POLLING_FREQ = 1000 * 10;
     private static final float MIN_DISTANCE = 10.0f;
@@ -45,6 +54,17 @@ public class FragmentOverlay extends Fragment implements SensorEventListener {
     private static final double IDEAL_ROLL = 90.0;
     private static final double ROLL_TOLERANCE = 10.0;
     private static final double PITCH_TOLERANCE = 10.0;
+
+    // В данном случае нам пока не требуются все данные, содержащиеся для маркера в БД
+    private static final String[] MARKERS_COLUMNS = {
+            MarkersContract.MarkersEntry._ID,
+            MarkersContract.MarkersEntry.COLUMN_LAT,
+            MarkersContract.MarkersEntry.COLUMN_LONG
+    };
+
+    static final int CURSOR__ID = 0;
+    static final int CURSOR_COLUMN_LAT = 1;
+    static final int CURSOR_COLUMN_LONG = 2;
 
     private Context mContext;
 
@@ -58,7 +78,7 @@ public class FragmentOverlay extends Fragment implements SensorEventListener {
     private Sensor mAccelerometer;
     private Sensor mMagnetometer;
 
-    // Storage for Sensor readings
+    // Здесь хранятся данные с сенсоров и средние значения из getOrientation для фильтра
     private float[] mGravity = null;
     private float[] mGeomagnetic = null;
     private float[] mOrientationAverage;
@@ -67,17 +87,16 @@ public class FragmentOverlay extends Fragment implements SensorEventListener {
     private double mPitch;
     private double mRoll;
 
-    // Views
 //    private FrameLayout mOverlayFrame;
     private OverlayView mOverlaySurface;
-    // For camera
+    // Для работы камеры
     private Camera mCamera;
     private FrameLayout mFrameLayout;
     private SurfaceHolder mSurfaceHolder;
     private boolean mIsPreviewing;
 
     public FragmentOverlay() {
-        // Required empty public constructor
+        // Необходим пустой публичный контейнер (не помню, по какой причине)
     }
 
     @Override
@@ -95,26 +114,24 @@ public class FragmentOverlay extends Fragment implements SensorEventListener {
         }
 
         mLocationListener = new LocationListener() {
-            // Called back when location changes
             public void onLocationChanged(Location location) {
                 mLocation = location;
             }
             public void onStatusChanged(String provider, int status, Bundle extras) {
-                //nothing to see here
+                //
             }
             public void onProviderEnabled(String provider) {
-                //nothing to see here
+                //
             }
             public void onProviderDisabled(String provider) {
-                //nothing to see here
+                //
             }
         };
 
-//        mMarkers = new ArrayList<>();
+        mMarkers = new ArrayList<>();
 //        mMarkers.add(LOCATION_MOSCOW);
 //        mMarkers.add(LOCATION_TOMSK);
 //        mMarkers.add(LOCATION_LETI);
-        loadMarkers();
 
         mSensorManager = (SensorManager) mContext.getSystemService(Context.SENSOR_SERVICE);
         mAccelerometer = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
@@ -122,10 +139,6 @@ public class FragmentOverlay extends Fragment implements SensorEventListener {
         mOrientationAverage = new float[3];
 
         downloadMarkers();
-    }
-
-    private void loadMarkers() {
-        // TODO: load markers with cursor
     }
 
     private void downloadMarkers() {
@@ -140,14 +153,12 @@ public class FragmentOverlay extends Fragment implements SensorEventListener {
 
         mFrameLayout = (FrameLayout) rootView.findViewById(R.id.frame_layout);
 
-        // Setup SurfaceView for previewing camera image
-//        SurfaceView surfaceView = (SurfaceView) rootView.findViewById(R.id.camera_surface);
+        // SurfaceView для просмотра видео с камеры
         SurfaceView surfaceView = new SurfaceView(mContext);
         surfaceView.setZOrderMediaOverlay(false);
+//        SurfaceView surfaceView = (SurfaceView) rootView.findViewById(R.id.camera_surface);
         mFrameLayout.addView(surfaceView);
-        // Get SurfaceHolder for accessing the SurfaceView's Surface
         mSurfaceHolder = surfaceView.getHolder();
-        // Set callback Object for the SurfaceHolder
         mSurfaceHolder.addCallback(mSurfaceHolderCallback);
 
         mOverlaySurface = new OverlayView(mContext, BitmapFactory.decodeResource(getResources(),
@@ -167,12 +178,12 @@ public class FragmentOverlay extends Fragment implements SensorEventListener {
         super.onResume();
 
         try {
-            // Register for network location updates
+            // Обновления локации от провайдера
             if (null != mLocationManager.getProvider(LocationManager.NETWORK_PROVIDER)) {
                 mLocationManager.requestLocationUpdates(LocationManager
                         .NETWORK_PROVIDER, POLLING_FREQ, MIN_DISTANCE, mLocationListener);
             }
-            // Register for GPS location updates
+            // Обновления локации от GPS
             if (null != mLocationManager.getProvider(LocationManager.GPS_PROVIDER)) {
                 mLocationManager.requestLocationUpdates(LocationManager
                         .GPS_PROVIDER, POLLING_FREQ, MIN_DISTANCE, mLocationListener);
@@ -187,8 +198,8 @@ public class FragmentOverlay extends Fragment implements SensorEventListener {
 
         if (null == mCamera) {
             try {
-                // Returns first back-facing camera or null if no camera is available.
-                // May take a long time to complete. Consider moving this to an AsyncTask
+                // Отдаёт камеру, смотрящую вперёд, или null в случае её отсутствия
+                // Может занять длительное время, рекомендуется перенести в AsyncTask
                 mCamera = Camera.open();
             }
             catch (RuntimeException e) {
@@ -214,22 +225,19 @@ public class FragmentOverlay extends Fragment implements SensorEventListener {
         if (mGravity != null && mGeomagnetic != null) {
             float rotationMatrix[] = new float[9];
 
-            // Users the accelerometer and magnetometer readings to compute the device's rotation
-            // with respect to a real world coordinate system
+            // Использует данные акселерометра и магнетометра для вычисления положения телефона относительно внешнего мира
             if (SensorManager.getRotationMatrix(rotationMatrix, null, mGravity, mGeomagnetic)) {
                 float orientationMatrix[] = new float[3];
 
-                // Returns the device's orientation given the rotationMatrix
                 SensorManager.getOrientation(rotationMatrix, orientationMatrix);
                 mOrientationAverage = lowPassFilter(mOrientationAverage, orientationMatrix);
 
-                // Assuming the device is on it's right side and camera away from user
+                // Предполагаем, что телефон находится в положении камерой от пользователя на правом боку
                 mAzimuth = Math.toDegrees(mOrientationAverage[0]) + AZIMUTH_ORIENTATION_CORRECTION;
                 mAzimuth = formatPiMinusPi(mAzimuth);
                 mPitch = Math.toDegrees(mOrientationAverage[1]);
                 mRoll = Math.toDegrees(mOrientationAverage[2]);
 
-                // Reset sensor event data arrays
                 mGravity = mGeomagnetic = null;
             }
         }
@@ -237,7 +245,7 @@ public class FragmentOverlay extends Fragment implements SensorEventListener {
 
     private float[] lowPassFilter(float[] orientationAverage, float[] orientationMatrix) {
         if (orientationMatrix.length == orientationAverage.length) {
-            // azimuth needs a special treatment because it can jump from -180 to 180 and back
+            // У азимута отдельный фильтр для обработки значений близких к 180 и -180
             double average = Math.toDegrees(orientationAverage[0]);
             double current = Math.toDegrees(orientationMatrix[0]);
             double correction = 0;
@@ -249,7 +257,7 @@ public class FragmentOverlay extends Fragment implements SensorEventListener {
             }
             orientationAverage[0] = (float) Math.toRadians(average +
                     (current - average + correction) * (1 - LOW_PASS_PERCENT));
-            // pitch and roll are fine
+            // У поворота и наклона одинаковый, более простой фильтр
             for (int i = 1; i < orientationMatrix.length; i++) {
                 orientationAverage[i] = orientationAverage[i] +
                         (orientationMatrix[i] - orientationAverage[i]) * (1 - LOW_PASS_PERCENT);
@@ -266,7 +274,7 @@ public class FragmentOverlay extends Fragment implements SensorEventListener {
 
     @Override
     public void onAccuracyChanged(Sensor sensor, int accuracy) {
-        //nothing to see here
+        //
     }
 
     @Override
@@ -291,10 +299,59 @@ public class FragmentOverlay extends Fragment implements SensorEventListener {
         super.onPause();
     }
 
-    // Overlay part
+    @Override
+    public void onActivityCreated(Bundle savedInstanceState) {
+        getLoaderManager().initLoader(MARKER_LOADER, null, this);
+        super.onActivityCreated(savedInstanceState);
+    }
+
+    @Override
+    public Loader<Cursor> onCreateLoader(int i, Bundle bundle) {
+        Uri markersUri = MarkersContract.MarkersEntry.buildAllMarkers();
+
+        return new CursorLoader(
+                mContext, // контекст
+                markersUri, // URI
+                MARKERS_COLUMNS, // выбор колонок таблицы
+                null, // условия
+                null, // аргументы для условий (подстановка в "?")
+                null // сортировка
+        );
+    }
+
+    @Override
+    public void onLoadFinished(Loader<Cursor> cursorLoader, Cursor cursor) {
+        mMarkers = cursorToList(cursor);
+    }
+
+    private ArrayList<Location> cursorToList(Cursor cursor) {
+        // get row indices for our cursor
+//        int idx_date = cursor.getColumnIndex(WeatherContract.WeatherEntry.COLUMN_DATE);
+//        int idx_short_desc = cursor.getColumnIndex(WeatherContract.WeatherEntry.COLUMN_SHORT_DESC);
+//        int idx_max_temp = cursor.getColumnIndex(WeatherContract.WeatherEntry.COLUMN_MAX_TEMP);
+//        int idx_min_temp = cursor.getColumnIndex(WeatherContract.WeatherEntry.COLUMN_MIN_TEMP);
+
+        ArrayList<Location> markers = new ArrayList<>();
+
+        for (int i = 0; i < cursor.getCount(); i++) {
+            Location location = new Location(LocationManager.NETWORK_PROVIDER);
+            location.setLatitude(cursor.getLong(CURSOR_COLUMN_LAT));
+            location.setLongitude(cursor.getLong(CURSOR_COLUMN_LONG));
+            markers.add(location);
+        }
+
+        return markers;
+    }
+
+    @Override
+    public void onLoaderReset(Loader<Cursor> cursorLoader) {
+        mMarkers.clear();
+    }
+
+    // Часть, ответственная за слой с маркерами
 
     private class OverlayView extends SurfaceView implements SurfaceHolder.Callback {
-        private static final float NULL_FLOAT = -1.0f;
+        private static final float NULL_FLOAT = -1000.0f;
         private static final int TOUCH_SIZE = 100;
 
         private Thread mDrawingThread;
@@ -302,8 +359,9 @@ public class FragmentOverlay extends Fragment implements SensorEventListener {
         private final SurfaceHolder mSurfaceHolder;
         private final Bitmap mBitmap;
         private final Paint mPainter = new Paint();
+        private final Paint mCirclePainter = new Paint();
 
-        // Y is the line of horizon and X is height
+        // Y - линия горизонта, X - вертикаль
         private ArrayList<Float> mYList;
         float mX = NULL_FLOAT;
         private float mCanvasHalfWidth = 0, mCanvasHalfHeight = 0;
@@ -311,25 +369,40 @@ public class FragmentOverlay extends Fragment implements SensorEventListener {
         public OverlayView(Context context, Bitmap bitmap) {
             super(context);
 
-            mYList = new ArrayList<>(mMarkers.size());
-            for (int i = 0; i < mMarkers.size(); i++) {
-                mYList.add(NULL_FLOAT);
-            }
+            initYList();
 
             mBitmap = bitmap;
             mPainter.setAntiAlias(true);
+            mCirclePainter.setARGB(255, 255, 0, 0);
+            mCirclePainter.setStyle(Paint.Style.FILL_AND_STROKE);
 
             mSurfaceHolder = getHolder();
             mSurfaceHolder.addCallback(this);
         }
 
+        private void initYList() {
+            mYList.clear(); // пока неясно, есть ли необходимость
+            mYList = new ArrayList<>(mMarkers.size());
+            for (int i = 0; i < mMarkers.size(); i++) {
+                mYList.add(NULL_FLOAT);
+            }
+        }
+
         private void drawMarkers(Canvas canvas) {
+
+            if (mMarkers.size() != mYList.size()) {
+                initYList();
+            }
+
+            canvas.drawCircle(mCanvasHalfWidth, mCanvasHalfHeight, 10.0f, mCirclePainter);
 
             if (mLocation != null
                     && mRoll > IDEAL_ROLL - ROLL_TOLERANCE && mRoll < IDEAL_ROLL + ROLL_TOLERANCE
                     && mPitch > -PITCH_TOLERANCE && mPitch < PITCH_TOLERANCE) {
 
                 canvas.drawColor(0, PorterDuff.Mode.CLEAR);
+
+                canvas.drawCircle(mCanvasHalfWidth, mCanvasHalfHeight, 10.0f, mCirclePainter);
 
                 mX = mCanvasHalfWidth + ((float) ((mRoll - IDEAL_ROLL) / ROLL_TOLERANCE * mCanvasHalfWidth));
 
@@ -357,6 +430,9 @@ public class FragmentOverlay extends Fragment implements SensorEventListener {
             else {
                 canvas.drawColor(0, PorterDuff.Mode.CLEAR);
                 mX = NULL_FLOAT;
+                for (int i = 0; i < mYList.size(); i++) {
+                    mYList.set(i, NULL_FLOAT);
+                }
             }
         }
 
@@ -430,7 +506,7 @@ public class FragmentOverlay extends Fragment implements SensorEventListener {
         }
     }
 
-    // Camera part
+    // Часть, ответственная за отрисовку картинки с камеры
 
     private void startPreview() {
         if (null != mCamera) {
@@ -454,7 +530,7 @@ public class FragmentOverlay extends Fragment implements SensorEventListener {
         }
     }
 
-    // Release camera so other applications can use it.
+    // Освободить ресурс камеры, чтобы другие программы могли её использовать
     private void releaseCameraResources() {
         if (null != mCamera) {
             mCamera.release();
@@ -462,7 +538,6 @@ public class FragmentOverlay extends Fragment implements SensorEventListener {
         }
     }
 
-    // SurfaceHolder callback Object
     SurfaceHolder.Callback mSurfaceHolderCallback = new SurfaceHolder.Callback() {
 
         @Override
@@ -473,19 +548,19 @@ public class FragmentOverlay extends Fragment implements SensorEventListener {
                 return;
             }
 
-            // Shutdown current preview
+            // Остановить текущий просмотр
             stopPreview();
 
             mCamera.setDisplayOrientation(90);
 
-            // Initialize preview display
+            // Инициализировать поверхность отображения просмотра
             try {
                 mCamera.setPreviewDisplay(holder);
             } catch (IOException e) {
                 Log.e(LOG_TAG, "Failed to set preview display in ");
             }
 
-            // Start preview
+            // Запустить просмотр
             try {
                 startPreview();
             } catch (RuntimeException e) {
@@ -495,12 +570,12 @@ public class FragmentOverlay extends Fragment implements SensorEventListener {
 
         @Override
         public void surfaceCreated(SurfaceHolder holder) {
-            // Do nothing
+            //
         }
 
         @Override
         public void surfaceDestroyed(SurfaceHolder holder) {
-            // Do Nothing
+            //
         }
     };
 

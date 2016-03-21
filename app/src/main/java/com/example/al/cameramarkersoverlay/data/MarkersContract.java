@@ -28,11 +28,15 @@ public class MarkersContract {
 
         public static final Uri CONTENT_URI = BASE_CONTENT_URI.buildUpon().appendPath(PATH_MARKERS).build();
 
-        public static final String CONTENT_TYPE =
+        public static final String CONTENT_DIR_TYPE =
                 ContentResolver.CURSOR_DIR_BASE_TYPE + "/" + CONTENT_AUTHORITY + "/" + PATH_MARKERS;
 
         public static final String CONTENT_ITEM_TYPE =
                 ContentResolver.CURSOR_ITEM_BASE_TYPE + "/" + CONTENT_AUTHORITY + "/" + PATH_MARKERS;
+
+        public static Uri buildAllMarkers() {
+            return CONTENT_URI;
+        }
 
 
         public static final String TABLE_NAME = "markers";
