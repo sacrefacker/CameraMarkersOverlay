@@ -333,7 +333,7 @@ public class FragmentOverlay extends Fragment
 
         ArrayList<Location> markers = new ArrayList<>();
 
-        for (int i = 0; i < cursor.getCount(); i++) {
+        for (cursor.moveToFirst(); !cursor.isAfterLast(); cursor.moveToNext()) {
             Location location = new Location(LocationManager.NETWORK_PROVIDER);
             location.setLatitude(cursor.getLong(CURSOR_COLUMN_LAT));
             location.setLongitude(cursor.getLong(CURSOR_COLUMN_LONG));
@@ -381,7 +381,6 @@ public class FragmentOverlay extends Fragment
         }
 
         private void initYList() {
-            mYList.clear(); // пока неясно, есть ли необходимость
             mYList = new ArrayList<>(mMarkers.size());
             for (int i = 0; i < mMarkers.size(); i++) {
                 mYList.add(NULL_FLOAT);
