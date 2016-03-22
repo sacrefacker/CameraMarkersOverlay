@@ -1,4 +1,4 @@
-package com.example.al.cameramarkersoverlay;
+package com.example.al.cameramarkersoverlay.temp;
 
 import android.content.Context;
 import android.content.Intent;
@@ -25,6 +25,8 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
 import android.widget.TextView;
+
+import com.example.al.cameramarkersoverlay.R;
 
 /**
  * A placeholder fragment containing a simple view.

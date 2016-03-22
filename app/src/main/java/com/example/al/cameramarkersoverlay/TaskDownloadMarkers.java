@@ -41,12 +41,14 @@ public class TaskDownloadMarkers extends AsyncTask<String, Void, Void> {
 
     @Override
     protected Void doInBackground(String... params) {
-        // networking
+        // здесь будет работа с сервером
+
         markersIntoDb();
         return null;
     }
 
     private void markersIntoDb() {
+        // здесь будет преобразование ответа от сервера в понятные данные и добавление их в БД
 
         mMarkers = new ArrayList<>();
         mMarkers.add(LOCATION_MOSCOW);
@@ -66,7 +68,7 @@ public class TaskDownloadMarkers extends AsyncTask<String, Void, Void> {
 
         }
 
-        // add to database
+        // добавляем значения в БД
         if ( cVVector.size() > 0 ) {
             ContentValues cVArray[] = new ContentValues[cVVector.size()];
             cVVector.toArray(cVArray);
