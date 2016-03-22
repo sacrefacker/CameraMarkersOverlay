@@ -325,19 +325,15 @@ public class FragmentOverlay extends Fragment
     }
 
     private ArrayList<Location> cursorToList(Cursor cursor) {
-        // get row indices for our cursor
-//        int idx_date = cursor.getColumnIndex(WeatherContract.WeatherEntry.COLUMN_DATE);
-//        int idx_short_desc = cursor.getColumnIndex(WeatherContract.WeatherEntry.COLUMN_SHORT_DESC);
-//        int idx_max_temp = cursor.getColumnIndex(WeatherContract.WeatherEntry.COLUMN_MAX_TEMP);
-//        int idx_min_temp = cursor.getColumnIndex(WeatherContract.WeatherEntry.COLUMN_MIN_TEMP);
-
         ArrayList<Location> markers = new ArrayList<>();
 
         for (cursor.moveToFirst(); !cursor.isAfterLast(); cursor.moveToNext()) {
             Location location = new Location(LocationManager.NETWORK_PROVIDER);
-            location.setLatitude(cursor.getLong(CURSOR_COLUMN_LAT));
-            location.setLongitude(cursor.getLong(CURSOR_COLUMN_LONG));
+            location.setLatitude(cursor.getDouble(CURSOR_COLUMN_LAT));
+            location.setLongitude(cursor.getDouble(CURSOR_COLUMN_LONG));
             markers.add(location);
+            //
+            Log.i(LOG_TAG, "Adding location from cursor: " + location.toString());
         }
 
         return markers;

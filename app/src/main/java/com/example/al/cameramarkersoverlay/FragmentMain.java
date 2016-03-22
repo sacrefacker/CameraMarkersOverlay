@@ -270,10 +270,10 @@ public class FragmentMain extends Fragment implements SensorEventListener {
 
         // Register for network location updates
         try {
-//            if (null != mLocationManager.getProvider(LocationManager.NETWORK_PROVIDER)) {
-//                mLocationManager.requestLocationUpdates(LocationManager
-//                        .NETWORK_PROVIDER, POLLING_FREQ, MIN_DISTANCE, mLocationListener);
-//            }
+            if (null != mLocationManager.getProvider(LocationManager.NETWORK_PROVIDER)) {
+                mLocationManager.requestLocationUpdates(LocationManager
+                        .NETWORK_PROVIDER, POLLING_FREQ, MIN_DISTANCE, mLocationListener);
+            }
             // Register for GPS location updates
             if (null != mLocationManager.getProvider(LocationManager.GPS_PROVIDER)) {
                 mLocationManager.requestLocationUpdates(LocationManager
