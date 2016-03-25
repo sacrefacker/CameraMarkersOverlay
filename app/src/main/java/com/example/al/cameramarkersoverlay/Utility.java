@@ -18,8 +18,8 @@ public class Utility {
             else if (average - current < -180){
                 correction = -360;
             }
-            orientationAverage[0] = (float) Math.toRadians(average +
-                    (current - average + correction) * (1 - LOW_PASS_PERCENT));
+            orientationAverage[0] = (float) Math.toRadians(formatPiMinusPi(average +
+                    (current - average + correction) * (1 - LOW_PASS_PERCENT)));
 
             // у поворота и наклона одинаковый, более простой фильтр
             for (int i = 1; i < orientationMatrix.length; i++) {

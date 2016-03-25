@@ -27,10 +27,8 @@ import android.widget.FrameLayout;
 import android.widget.TextView;
 
 import com.example.al.cameramarkersoverlay.R;
+import com.example.al.cameramarkersoverlay.Utility;
 
-/**
- * A placeholder fragment containing a simple view.
- */
 public class FragmentMain extends Fragment implements SensorEventListener {
     public static final String LOG_TAG = FragmentMain.class.getSimpleName();
     public static final String BUNDLE_LOCATION = "location";
@@ -314,13 +312,14 @@ public class FragmentMain extends Fragment implements SensorEventListener {
 
                 // Returns the device's orientation given the rotationMatrix
                 SensorManager.getOrientation(rotationMatrix, orientationMatrix);
-                mOrientationAverage = lowPassFilter(mOrientationAverage, orientationMatrix);
+                mOrientationAverage = Utility.lowPassFilter(mOrientationAverage, orientationMatrix);
 
                 // Assuming the device is on it's right side and camera away from user
-                double azimuth = Math.toDegrees(mOrientationAverage[0]) + AZIMUTH_ORIENTATION_CORRECTION;
+                double azimuth = Math.toDegrees(mOrientationAverage[0]);
+//                double azimuth = Math.toDegrees(mOrientationAverage[0]) + AZIMUTH_ORIENTATION_CORRECTION;
+//                azimuth = Utility.formatPiMinusPi(azimuth);
                 double pitch = Math.toDegrees(mOrientationAverage[1]);
                 mRoll = Math.toDegrees(mOrientationAverage[2]);
-                azimuth = formatPiMinusPi(azimuth);
 
                 mOrientationTextView.setText(String.format(mContext.getString(R.string.format_sensor),
                         azimuth,
@@ -337,19 +336,19 @@ public class FragmentMain extends Fragment implements SensorEventListener {
                 if (mLocation != null) {
 
                     mAzimuthMoscow = mLocation.bearingTo(LOCATION_MOSCOW) - azimuth;
-                    mAzimuthMoscow = formatPiMinusPi(mAzimuthMoscow);
+                    mAzimuthMoscow = Utility.formatPiMinusPi(mAzimuthMoscow);
                     mAzimuthMoscowTextView.setText(String.format(mContext.getString(R.string.format_azimuth),
                             mAzimuthMoscow));
                     checkInFieldOfView(mAzimuthMoscow, mAzimuthMoscowTextView);
 
                     mAzimuthTomsk = mLocation.bearingTo(LOCATION_TOMSK) - azimuth;
-                    mAzimuthTomsk = formatPiMinusPi(mAzimuthTomsk);
+                    mAzimuthTomsk = Utility.formatPiMinusPi(mAzimuthTomsk);
                     mAzimuthTomskTextView.setText(String.format(mContext.getString(R.string.format_azimuth),
                             mAzimuthTomsk));
                     checkInFieldOfView(mAzimuthTomsk, mAzimuthTomskTextView);
 
                     mAzimuthLeti = mLocation.bearingTo(LOCATION_LETI) - azimuth;
-                    mAzimuthLeti = formatPiMinusPi(mAzimuthLeti);
+                    mAzimuthLeti = Utility.formatPiMinusPi(mAzimuthLeti);
                     mAzimuthLetiTextView.setText(String.format(mContext.getString(R.string.format_azimuth),
                             mAzimuthLeti));
                     checkInFieldOfView(mAzimuthLeti, mAzimuthLetiTextView);
@@ -359,35 +358,6 @@ public class FragmentMain extends Fragment implements SensorEventListener {
                 mGravity = mGeomagnetic = null;
             }
         }
-    }
-
-    private float[] lowPassFilter(float[] orientationAverage, float[] orientationMatrix) {
-        if (orientationMatrix.length == orientationAverage.length) {
-            // azimuth needs a special treatment because it can jump from -180 to 180 and back
-            double average = Math.toDegrees(orientationAverage[0]);
-            double current = Math.toDegrees(orientationMatrix[0]);
-            double correction = 0;
-            if (average - current > 180) {
-                correction = 360;
-            }
-            else if (average - current < -180){
-                correction = -360;
-            }
-            orientationAverage[0] = (float) Math.toRadians(average +
-                    (current - average + correction) * (1 - LOW_PASS_PERCENT));
-            // pitch and roll are fine
-            for (int i = 1; i < orientationMatrix.length; i++) {
-                orientationAverage[i] = orientationAverage[i] +
-                        (orientationMatrix[i] - orientationAverage[i]) * (1 - LOW_PASS_PERCENT);
-            }
-        }
-        return orientationAverage;
-    }
-
-    private double formatPiMinusPi(double angle) {
-        angle = (angle < -180) ? angle + 360 : angle;
-        angle = (angle > 180) ? angle - 360 : angle;
-        return angle;
     }
 
     private void checkInFieldOfView(double azimuth, TextView textView) {

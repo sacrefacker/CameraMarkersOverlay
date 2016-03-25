@@ -4,6 +4,7 @@ package com.example.al.cameramarkersoverlay;
 import android.content.Context;
 import android.database.Cursor;
 import android.graphics.BitmapFactory;
+import android.graphics.Color;
 import android.graphics.PixelFormat;
 import android.hardware.Camera;
 import android.hardware.Sensor;
@@ -20,12 +21,16 @@ import android.support.v4.app.LoaderManager;
 import android.support.v4.content.CursorLoader;
 import android.support.v4.content.Loader;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 
 import com.example.al.cameramarkersoverlay.data.MarkersContract;
 
@@ -45,9 +50,6 @@ public class FragmentOverlay extends Fragment
     private static final long POLLING_FREQ = 1000 * 10;
     private static final float MIN_DISTANCE = 10.0f;
 
-    // коррекция значения азимута в связи с ориентацией телефона во время искользования приложения
-    private static final double AZIMUTH_ORIENTATION_CORRECTION = -90.0;
-
     // выбираем колонки таблицы для извлечения курсором из БД
     private static final String[] MARKERS_COLUMNS = {
             MarkersContract.MarkersEntry._ID,
@@ -55,9 +57,9 @@ public class FragmentOverlay extends Fragment
             MarkersContract.MarkersEntry.COLUMN_LONG
     };
     // для получения значений из курсора
-    static final int CURSOR__ID = 0;
-    static final int CURSOR_COLUMN_LAT = 1;
-    static final int CURSOR_COLUMN_LONG = 2;
+    private static final int CURSOR__ID = 0;
+    private static final int CURSOR_COLUMN_LAT = 1;
+    private static final int CURSOR_COLUMN_LONG = 2;
 
     private Context mContext;
 
@@ -73,12 +75,25 @@ public class FragmentOverlay extends Fragment
     private float[] mGeomagnetic = null;
     private float[] mOrientationAverage;
 
+    // для работы камеры
+    private Camera mCamera;
+    private SurfaceHolder mSurfaceHolder;
+    private boolean mIsPreviewing;
+
     // данные, которые понадобятся для отрисовки маркеров
     private Location mLocation;
     private ArrayList<Location> mMarkers;
     private double mAzimuth;
     private double mPitch;
     private double mRoll;
+
+    private ViewOverlay mOverlaySurface;
+    private TextView mAzimuthView;
+    private ImageView mWarningView;
+
+    public FragmentOverlay() {
+        // Необходим пустой публичный контейнер (не помню, по какой причине)
+    }
 
     @Override
     public double getAzimuth() {
@@ -105,14 +120,37 @@ public class FragmentOverlay extends Fragment
         return mRoll;
     }
 
-    // для работы камеры
-    private Camera mCamera;
-    private SurfaceHolder mSurfaceHolder;
-    private boolean mIsPreviewing;
-
-    public FragmentOverlay() {
-        // Необходим пустой публичный контейнер (не помню, по какой причине)
+    @Override
+    public void showWarning() {
+        getActivity().runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                rotateIfNeedBe();
+                mWarningView.setVisibility(View.VISIBLE);
+            }
+        });
     }
+
+    @Override
+    public void hideWarning() {
+        getActivity().runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                rotateIfNeedBe();
+                mWarningView.setVisibility(View.INVISIBLE);
+            }
+        });
+    }
+
+    private void rotateIfNeedBe() {
+        if (mOverlaySurface.getOrientation() == ViewOverlay.LEFT_ROLL) {
+            mWarningView.setRotation(180);
+        }
+        else if (mOverlaySurface.getOrientation() == ViewOverlay.RIGHT_ROLL) {
+            mWarningView.setRotation(0);
+        }
+    }
+
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -175,15 +213,29 @@ public class FragmentOverlay extends Fragment
         mSurfaceHolder.addCallback(mSurfaceHolderCallback);
 
         // ViewOverlay для отображения маркеров поверх видео (унаследован от SurfaceView)
-        ViewOverlay overlaySurface = new ViewOverlay(
+        mOverlaySurface = new ViewOverlay(
                 this,
                 mContext,
                 BitmapFactory.decodeResource(getResources(), android.R.drawable.ic_delete)
         );
-        overlaySurface.setZOrderMediaOverlay(true);
-        SurfaceHolder overlayHolder = overlaySurface.getHolder();
+        mOverlaySurface.setZOrderMediaOverlay(true);
+        SurfaceHolder overlayHolder = mOverlaySurface.getHolder();
         overlayHolder.setFormat(PixelFormat.TRANSPARENT);
-        frameLayout.addView(overlaySurface);
+        frameLayout.addView(mOverlaySurface);
+
+        LinearLayout warningFrame = new LinearLayout(mContext);
+        warningFrame.setGravity(Gravity.CENTER);
+        frameLayout.addView(warningFrame);
+        // ImageView для отображения картинки-подсказки
+        mWarningView = new ImageView(mContext);
+        mWarningView.setImageResource(R.drawable.overlay_warning);
+        warningFrame.addView(mWarningView);
+
+        // TextView для отображения текущего значения азимута
+        mAzimuthView = new TextView(mContext);
+        mAzimuthView.setTextAppearance(mContext, android.R.style.TextAppearance_Large);
+        mAzimuthView.setTextColor(Color.RED);
+        frameLayout.addView(mAzimuthView);
 
         return rootView;
     }
@@ -249,10 +301,11 @@ public class FragmentOverlay extends Fragment
                 mOrientationAverage = Utility.lowPassFilter(mOrientationAverage, orientationMatrix);
 
                 // предполагаем, что телефон находится в положении камерой от пользователя на правом боку
-                mAzimuth = Math.toDegrees(mOrientationAverage[0]) + AZIMUTH_ORIENTATION_CORRECTION;
-                mAzimuth = Utility.formatPiMinusPi(mAzimuth);
+                mAzimuth = Math.toDegrees(mOrientationAverage[0]);
                 mPitch = Math.toDegrees(mOrientationAverage[1]);
                 mRoll = Math.toDegrees(mOrientationAverage[2]);
+
+                mAzimuthView.setText(String.format(mContext.getString(R.string.format_azimuth), mAzimuth));
 
                 // обнуляем данные, чтобы ждать новые - так они каждый раз будут свеженькими
                 mGravity = mGeomagnetic = null;

@@ -17,12 +17,25 @@ import java.util.ArrayList;
 
 class ViewOverlay extends SurfaceView implements SurfaceHolder.Callback {
     private static final double FIELD_OF_VIEW = 40.0;
-    private static final double IDEAL_ROLL = 90.0;
     private static final double ROLL_TOLERANCE = 10.0;
     private static final double PITCH_TOLERANCE = 10.0;
 
     private static final float NULL_FLOAT = -1000.0f;
     private static final int TOUCH_SIZE = 100;
+
+    // коррекция значения азимута в связи с ориентацией телефона во время искользования приложения
+    private static final double AZIMUTH_ORIENTATION_CORRECTION_RIGHT = -90.0;
+    private static final double AZIMUTH_ORIENTATION_CORRECTION_LEFT = 90;
+    public static final double RIGHT_ROLL = 90.0;
+    public static final double LEFT_ROLL = -90.0;
+    public static final double NO_ROLL = 0.0;
+
+    private double mOrientation = NO_ROLL;
+    private double mCorrection = AZIMUTH_ORIENTATION_CORRECTION_RIGHT;
+
+    public double getOrientation() {
+        return mOrientation;
+    }
 
     private Context mContext;
 
@@ -71,24 +84,42 @@ class ViewOverlay extends SurfaceView implements SurfaceHolder.Callback {
             initYList();
         }
 
+        // точка посередине холста для лучшей ориентации на глаз
         canvas.drawCircle(mCanvasHalfWidth, mCanvasHalfHeight, 10.0f, mCirclePainter);
+
+        if (mInterfaceOverlay.getRoll() > RIGHT_ROLL - ROLL_TOLERANCE
+                && mInterfaceOverlay.getRoll() < RIGHT_ROLL + ROLL_TOLERANCE) {
+
+            mOrientation = RIGHT_ROLL;
+            mCorrection = AZIMUTH_ORIENTATION_CORRECTION_RIGHT;
+        }
+
+        else if (mInterfaceOverlay.getRoll() > LEFT_ROLL - ROLL_TOLERANCE
+                && mInterfaceOverlay.getRoll() < LEFT_ROLL + ROLL_TOLERANCE) {
+
+            mOrientation = LEFT_ROLL;
+            mCorrection = AZIMUTH_ORIENTATION_CORRECTION_LEFT;
+        }
+
+        else {
+            mOrientation = NO_ROLL;
+        }
 
         // будем рисовать только если уже определена локация и ориентация телефона удовлетворительаня
         if (mInterfaceOverlay.getLocation() != null
-                && mInterfaceOverlay.getRoll() > IDEAL_ROLL - ROLL_TOLERANCE
-                && mInterfaceOverlay.getRoll() < IDEAL_ROLL + ROLL_TOLERANCE
+                && mOrientation != NO_ROLL
                 && mInterfaceOverlay.getPitch() > -PITCH_TOLERANCE
                 && mInterfaceOverlay.getPitch() < PITCH_TOLERANCE) {
 
             // очищаем холст
             canvas.drawColor(0, PorterDuff.Mode.CLEAR);
+            mInterfaceOverlay.hideWarning();
 
             // точка посередине холста для лучшей ориентации на глаз
             canvas.drawCircle(mCanvasHalfWidth, mCanvasHalfHeight, 10.0f, mCirclePainter);
 
             // положение маркеров по вертикали - общее для всех (минус размер самого маркера)
-            mX = mCanvasHalfWidth + ((float) ((mInterfaceOverlay.getRoll()
-                    - IDEAL_ROLL) / ROLL_TOLERANCE * mCanvasHalfWidth));
+            mX = mCanvasHalfWidth + ((float) ((mInterfaceOverlay.getRoll() - mOrientation) / ROLL_TOLERANCE * mCanvasHalfWidth));
 
             // отрисовка каждого маркера
             for (int i = 0; i < mInterfaceOverlay.getMarkers().size(); i++) {
@@ -105,12 +136,16 @@ class ViewOverlay extends SurfaceView implements SurfaceHolder.Callback {
 
                 // высчитываем угол между направлением взгляда и азимутом маркера
                 double azimuth = Utility.formatPiMinusPi(mInterfaceOverlay.getLocation().bearingTo(
-                        mInterfaceOverlay.getMarkers().get(i)) - mInterfaceOverlay.getAzimuth());
+                        mInterfaceOverlay.getMarkers().get(i)) - Utility.formatPiMinusPi(mInterfaceOverlay.getAzimuth()+ mCorrection));
 
                 // если этот угол попадает в поле зрения, рисуем его в соответствующем месте
                 if (azimuth > -FIELD_OF_VIEW && azimuth < FIELD_OF_VIEW) {
-                    mYList.set(i, mCanvasHalfHeight - bitmapSize / 2
-                            - ((float) (azimuth / FIELD_OF_VIEW * mCanvasHalfHeight)));
+                    if (mOrientation == RIGHT_ROLL) {
+                        mYList.set(i, mCanvasHalfHeight - bitmapSize / 2 - ((float) (azimuth / FIELD_OF_VIEW * mCanvasHalfHeight)));
+                    }
+                    else {
+                        mYList.set(i, mCanvasHalfHeight - bitmapSize / 2 + ((float) (azimuth / FIELD_OF_VIEW * mCanvasHalfHeight)));
+                    }
                 }
                 // если нет - обнуляем координату Y в списке, чтобы нажатие не срабатывало
                 else {
@@ -123,6 +158,7 @@ class ViewOverlay extends SurfaceView implements SurfaceHolder.Callback {
         }
         // очищаем холст и обнуляем координаты, чтобы не срабатывали нажатия
         else {
+            mInterfaceOverlay.showWarning();
             canvas.drawColor(0, PorterDuff.Mode.CLEAR);
             mX = NULL_FLOAT;
             for (int i = 0; i < mYList.size(); i++) {

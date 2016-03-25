@@ -16,4 +16,9 @@ public interface InterfaceOverlay {
     public double getPitch();
 
     public double getRoll();
+
+    public void showWarning();
+
+    public void hideWarning();
+
 }
