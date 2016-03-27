@@ -247,7 +247,7 @@ public class FragmentOverlay extends Fragment
             }
         }
 
-//        resumeLocation();
+        resumeLocation();
 
         startPreview();
         mOverlaySurface.setVisibility(View.VISIBLE);
@@ -322,7 +322,7 @@ public class FragmentOverlay extends Fragment
             ex.printStackTrace();
         }
 
-//        saveLocation();
+        saveLocation();
 
         mSensorManager.unregisterListener(this);
 
@@ -343,6 +343,12 @@ public class FragmentOverlay extends Fragment
     public void onDestroy() {
         releaseCameraResources();
         super.onDestroy();
+    }
+
+    @Override
+    public void onActivityCreated(Bundle savedInstanceState) {
+        getLoaderManager().initLoader(MARKER_LOADER, null, this);
+        super.onActivityCreated(savedInstanceState);
     }
 
     @Override
