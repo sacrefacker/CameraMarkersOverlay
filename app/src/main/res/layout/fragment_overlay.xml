@@ -13,11 +13,38 @@
         <!--android:layout_width="match_parent"-->
         <!--android:layout_height="match_parent" />-->
 
-    <!--<FrameLayout-->
-        <!--android:id="@+id/overlay_frame"-->
+    <!--<LinearLayout-->
+        <!--android:gravity="center"-->
         <!--android:layout_width="match_parent"-->
-        <!--android:layout_height="match_parent" >-->
-    <!--</FrameLayout>-->
+        <!--android:layout_height="match_parent">-->
+
+        <!--<ImageView-->
+            <!--android:id="@+id/warning_image"-->
+            <!--android:src="@drawable/overlay_warning"-->
+            <!--android:layout_width="match_parent"-->
+            <!--android:layout_height="match_parent" />-->
+
+    <!--</LinearLayout>-->
+
+    <!--<LinearLayout-->
+        <!--android:layout_width="match_parent"-->
+        <!--android:layout_height="match_parent">-->
+
+        <!--<TextView-->
+            <!--android:id="@+id/azimuth_view"-->
+            <!--android:textColor="@color/red"-->
+            <!--android:textAppearance="?android:attr/textAppearanceMedium"-->
+            <!--android:layout_width="wrap_content"-->
+            <!--android:layout_height="wrap_content" />-->
+
+        <!--<TextView-->
+            <!--android:id="@+id/location_view"-->
+            <!--android:textColor="@color/red"-->
+            <!--android:textAppearance="?android:attr/textAppearanceMedium"-->
+            <!--android:layout_width="wrap_content"-->
+            <!--android:layout_height="wrap_content" />-->
+
+    <!--</LinearLayout>-->
 
 
 </FrameLayout>

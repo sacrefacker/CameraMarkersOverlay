@@ -5,7 +5,7 @@ import android.location.Location;
 import java.util.ArrayList;
 
 // интерфейс для взаимодействия ViewOverlay с фрагментом
-public interface InterfaceOverlay {
+public interface InterfaceSensors {
 
     public double getAzimuth();
 
@@ -16,9 +16,5 @@ public interface InterfaceOverlay {
     public double getPitch();
 
     public double getRoll();
-
-    public void showWarning();
-
-    public void hideWarning();
 
 }

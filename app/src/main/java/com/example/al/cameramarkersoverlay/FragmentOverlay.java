@@ -20,6 +20,7 @@ import android.support.v4.app.Fragment;
 import android.support.v4.app.LoaderManager;
 import android.support.v4.content.CursorLoader;
 import android.support.v4.content.Loader;
+import android.util.AttributeSet;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.LayoutInflater;
@@ -36,12 +37,15 @@ import com.example.al.cameramarkersoverlay.data.MarkersContract;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.jar.Attributes;
 
 public class FragmentOverlay extends Fragment
-        implements SensorEventListener, LoaderManager.LoaderCallbacks<Cursor>, InterfaceOverlay {
+        implements SensorEventListener, LoaderManager.LoaderCallbacks<Cursor>,
+        InterfaceSensors {
 
-    public static final String LOG_TAG = FragmentOverlay.class.getSimpleName();
-    public static final String BUNDLE_LOCATION = "location";
+    private static final String LOG_TAG = FragmentOverlay.class.getSimpleName();
+    private static final String BUNDLE_LOCATION = "location";
+    private static final String BUNDLE_MARKERS = "markers";
 
     // id для CursorLoader
     private static final int MARKER_LOADER = 0;
@@ -77,7 +81,7 @@ public class FragmentOverlay extends Fragment
 
     // для работы камеры
     private Camera mCamera;
-    private SurfaceHolder mSurfaceHolder;
+    private SurfaceHolder mCameraHolder;
     private boolean mIsPreviewing;
 
     // данные, которые понадобятся для отрисовки маркеров
@@ -89,6 +93,7 @@ public class FragmentOverlay extends Fragment
 
     private ViewOverlay mOverlaySurface;
     private TextView mAzimuthView;
+    private TextView mLocationView;
     private ImageView mWarningView;
 
     public FragmentOverlay() {
@@ -121,38 +126,6 @@ public class FragmentOverlay extends Fragment
     }
 
     @Override
-    public void showWarning() {
-        getActivity().runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                rotateIfNeedBe();
-                mWarningView.setVisibility(View.VISIBLE);
-            }
-        });
-    }
-
-    @Override
-    public void hideWarning() {
-        getActivity().runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                rotateIfNeedBe();
-                mWarningView.setVisibility(View.INVISIBLE);
-            }
-        });
-    }
-
-    private void rotateIfNeedBe() {
-        if (mOverlaySurface.getOrientation() == ViewOverlay.LEFT_ROLL) {
-            mWarningView.setRotation(180);
-        }
-        else if (mOverlaySurface.getOrientation() == ViewOverlay.RIGHT_ROLL) {
-            mWarningView.setRotation(0);
-        }
-    }
-
-
-    @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         mContext = getActivity();
@@ -160,6 +133,7 @@ public class FragmentOverlay extends Fragment
         // вынимаем локацию, чтобы при смене ориентации и др. не ждать новую каждый раз
         if (savedInstanceState != null) {
             mLocation = savedInstanceState.getParcelable(BUNDLE_LOCATION);
+            mMarkers = savedInstanceState.getParcelableArrayList(BUNDLE_MARKERS);
         }
 
         mLocationManager = (LocationManager) mContext.getSystemService(Context.LOCATION_SERVICE);
@@ -209,15 +183,16 @@ public class FragmentOverlay extends Fragment
         SurfaceView surfaceView = new SurfaceView(mContext);
         surfaceView.setZOrderMediaOverlay(false);
         frameLayout.addView(surfaceView);
-        mSurfaceHolder = surfaceView.getHolder();
-        mSurfaceHolder.addCallback(mSurfaceHolderCallback);
+        mCameraHolder = surfaceView.getHolder();
+        mCameraHolder.addCallback(mSurfaceHolderCallback);
 
         // ViewOverlay для отображения маркеров поверх видео (унаследован от SurfaceView)
         mOverlaySurface = new ViewOverlay(
-                this,
                 mContext,
-                BitmapFactory.decodeResource(getResources(), android.R.drawable.ic_delete)
+                BitmapFactory.decodeResource(getResources(), android.R.drawable.ic_delete),
+                this
         );
+        mOverlaySurface.registerObserver(new WarningOverlayHandler());
         mOverlaySurface.setZOrderMediaOverlay(true);
         SurfaceHolder overlayHolder = mOverlaySurface.getHolder();
         overlayHolder.setFormat(PixelFormat.TRANSPARENT);
@@ -225,17 +200,22 @@ public class FragmentOverlay extends Fragment
 
         LinearLayout warningFrame = new LinearLayout(mContext);
         warningFrame.setGravity(Gravity.CENTER);
-        frameLayout.addView(warningFrame);
         // ImageView для отображения картинки-подсказки
         mWarningView = new ImageView(mContext);
         mWarningView.setImageResource(R.drawable.overlay_warning);
         warningFrame.addView(mWarningView);
+        frameLayout.addView(warningFrame);
 
-        // TextView для отображения текущего значения азимута
+        // TextView для отображения текущего значения азимута и локации
         mAzimuthView = new TextView(mContext);
-        mAzimuthView.setTextAppearance(mContext, android.R.style.TextAppearance_Large);
+        mAzimuthView.setTextAppearance(mContext, android.R.style.TextAppearance_Medium);
         mAzimuthView.setTextColor(Color.RED);
         frameLayout.addView(mAzimuthView);
+
+        mLocationView = new TextView(mContext);
+        mLocationView.setTextAppearance(mContext, android.R.style.TextAppearance_Medium);
+        mLocationView.setTextColor(Color.RED);
+        frameLayout.addView(mLocationView);
 
         return rootView;
     }
@@ -273,6 +253,9 @@ public class FragmentOverlay extends Fragment
                 Log.e(LOG_TAG, "Failed to acquire camera");
             }
         }
+
+        startPreview();
+        mOverlaySurface.setVisibility(View.VISIBLE);
     }
 
     @Override
@@ -306,6 +289,13 @@ public class FragmentOverlay extends Fragment
                 mRoll = Math.toDegrees(mOrientationAverage[2]);
 
                 mAzimuthView.setText(String.format(mContext.getString(R.string.format_azimuth), mAzimuth));
+                if (mLocation != null) {
+                    mLocationView.setText(String.format(mContext.getString(R.string.format_location),
+                            mLocation.getLatitude(), mLocation.getLongitude()));
+                }
+                else {
+                    mLocationView.setText(" ");
+                }
 
                 // обнуляем данные, чтобы ждать новые - так они каждый раз будут свеженькими
                 mGravity = mGeomagnetic = null;
@@ -324,6 +314,7 @@ public class FragmentOverlay extends Fragment
 
         // сохраняем локацию, чтобы потом не ждать
         outState.putParcelable(BUNDLE_LOCATION, mLocation);
+        outState.putParcelableArrayList(BUNDLE_MARKERS, mMarkers);
     }
 
     @Override
@@ -337,9 +328,15 @@ public class FragmentOverlay extends Fragment
 
         mSensorManager.unregisterListener(this);
 
-        releaseCameraResources();
+        mOverlaySurface.setVisibility(View.INVISIBLE);
 
         super.onPause();
+    }
+
+    @Override
+    public void onDestroy() {
+        releaseCameraResources();
+        super.onDestroy();
     }
 
     @Override
@@ -388,6 +385,39 @@ public class FragmentOverlay extends Fragment
         mMarkers.clear();
     }
 
+    private class WarningOverlayHandler implements ObserverWarning {
+        boolean mIsVisible = false;
+        double mOrientation = ViewOverlay.NO_ROLL;
+
+        @Override
+        public void update(boolean visible, double orientation) {
+            if (mIsVisible != visible) {
+                mIsVisible = visible;
+                mOrientation = orientation;
+                getActivity().runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        rotateIfNeeded();
+                        if (mIsVisible) {
+                            mWarningView.setVisibility(View.VISIBLE);
+                        }
+                        else {
+                            mWarningView.setVisibility(View.INVISIBLE);
+                        }
+                    }
+                });
+            }
+        }
+
+        private void rotateIfNeeded() {
+            if (mOrientation == ViewOverlay.LEFT_ROLL) {
+                mWarningView.setRotation(180);
+            } else if (mOrientation == ViewOverlay.RIGHT_ROLL) {
+                mWarningView.setRotation(0);
+            }
+        }
+    }
+
     // Часть, ответственная за отрисовку картинки с камеры
 
     private void startPreview() {
@@ -426,7 +456,7 @@ public class FragmentOverlay extends Fragment
         @SuppressWarnings("deprecation")
         public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
 
-            if (mSurfaceHolder.getSurface() == null) {
+            if (mCameraHolder.getSurface() == null) {
                 return;
             }
             stopPreview();

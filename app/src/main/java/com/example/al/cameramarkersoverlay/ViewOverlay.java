@@ -8,14 +8,19 @@ import android.graphics.Paint;
 import android.graphics.PorterDuff;
 import android.location.Location;
 import android.net.Uri;
+import android.os.Bundle;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 
 import java.util.ArrayList;
+import java.util.List;
 
-class ViewOverlay extends SurfaceView implements SurfaceHolder.Callback {
+class ViewOverlay extends SurfaceView implements SurfaceHolder.Callback, ObservableWarning {
+
+    private static final String LOG_TAG = ViewOverlay.class.getSimpleName();
+
     private static final double FIELD_OF_VIEW = 40.0;
     private static final double ROLL_TOLERANCE = 10.0;
     private static final double PITCH_TOLERANCE = 10.0;
@@ -33,13 +38,10 @@ class ViewOverlay extends SurfaceView implements SurfaceHolder.Callback {
     private double mOrientation = NO_ROLL;
     private double mCorrection = AZIMUTH_ORIENTATION_CORRECTION_RIGHT;
 
-    public double getOrientation() {
-        return mOrientation;
-    }
-
     private Context mContext;
 
-    private InterfaceOverlay mInterfaceOverlay;
+    private InterfaceSensors mSensors;
+    private List<ObserverWarning> mObserversWarning;
     private Thread mDrawingThread;
 
     private final SurfaceHolder mSurfaceHolder;
@@ -49,13 +51,15 @@ class ViewOverlay extends SurfaceView implements SurfaceHolder.Callback {
 
     // Y - линия горизонта, X - вертикаль
     private ArrayList<Float> mYList;
-    float mX = NULL_FLOAT;
+    private float mX = NULL_FLOAT;
     private float mCanvasHalfWidth = 0, mCanvasHalfHeight = 0;
 
-    public ViewOverlay(InterfaceOverlay interfaceOverlay, Context context, Bitmap bitmap) {
+    public ViewOverlay(Context context, Bitmap bitmap, InterfaceSensors interfaceSensors) {
+
         super(context);
         mContext = context;
-        mInterfaceOverlay = interfaceOverlay;
+        mSensors = interfaceSensors;
+        mObserversWarning = new ArrayList<>();
 
         initYList();
 
@@ -72,30 +76,30 @@ class ViewOverlay extends SurfaceView implements SurfaceHolder.Callback {
 
     // создание заново списка Y координат пригождается при изменении списка маркеров и в конструкторе
     private void initYList() {
-        mYList = new ArrayList<>(mInterfaceOverlay.getMarkers().size());
-        for (int i = 0; i < mInterfaceOverlay.getMarkers().size(); i++) {
+        mYList = new ArrayList<>(mSensors.getMarkers().size());
+        for (int i = 0; i < mSensors.getMarkers().size(); i++) {
             mYList.add(NULL_FLOAT);
         }
     }
 
     private void drawMarkers(Canvas canvas) {
 
-        if (mInterfaceOverlay.getMarkers().size() != mYList.size()) {
+        if (mSensors.getMarkers().size() != mYList.size()) {
             initYList();
         }
 
         // точка посередине холста для лучшей ориентации на глаз
         canvas.drawCircle(mCanvasHalfWidth, mCanvasHalfHeight, 10.0f, mCirclePainter);
 
-        if (mInterfaceOverlay.getRoll() > RIGHT_ROLL - ROLL_TOLERANCE
-                && mInterfaceOverlay.getRoll() < RIGHT_ROLL + ROLL_TOLERANCE) {
+        if (mSensors.getRoll() > RIGHT_ROLL - ROLL_TOLERANCE
+                && mSensors.getRoll() < RIGHT_ROLL + ROLL_TOLERANCE) {
 
             mOrientation = RIGHT_ROLL;
             mCorrection = AZIMUTH_ORIENTATION_CORRECTION_RIGHT;
         }
 
-        else if (mInterfaceOverlay.getRoll() > LEFT_ROLL - ROLL_TOLERANCE
-                && mInterfaceOverlay.getRoll() < LEFT_ROLL + ROLL_TOLERANCE) {
+        else if (mSensors.getRoll() > LEFT_ROLL - ROLL_TOLERANCE
+                && mSensors.getRoll() < LEFT_ROLL + ROLL_TOLERANCE) {
 
             mOrientation = LEFT_ROLL;
             mCorrection = AZIMUTH_ORIENTATION_CORRECTION_LEFT;
@@ -106,28 +110,28 @@ class ViewOverlay extends SurfaceView implements SurfaceHolder.Callback {
         }
 
         // будем рисовать только если уже определена локация и ориентация телефона удовлетворительаня
-        if (mInterfaceOverlay.getLocation() != null
+        if (mSensors.getLocation() != null
                 && mOrientation != NO_ROLL
-                && mInterfaceOverlay.getPitch() > -PITCH_TOLERANCE
-                && mInterfaceOverlay.getPitch() < PITCH_TOLERANCE) {
+                && mSensors.getPitch() > -PITCH_TOLERANCE
+                && mSensors.getPitch() < PITCH_TOLERANCE) {
 
             // очищаем холст
             canvas.drawColor(0, PorterDuff.Mode.CLEAR);
-            mInterfaceOverlay.hideWarning();
+            notifyObservers(false);
 
             // точка посередине холста для лучшей ориентации на глаз
             canvas.drawCircle(mCanvasHalfWidth, mCanvasHalfHeight, 10.0f, mCirclePainter);
 
             // положение маркеров по вертикали - общее для всех (минус размер самого маркера)
-            mX = mCanvasHalfWidth + ((float) ((mInterfaceOverlay.getRoll() - mOrientation) / ROLL_TOLERANCE * mCanvasHalfWidth));
+            mX = mCanvasHalfWidth + ((float) ((mSensors.getRoll() - mOrientation) / ROLL_TOLERANCE * mCanvasHalfWidth));
 
             // отрисовка каждого маркера
-            for (int i = 0; i < mInterfaceOverlay.getMarkers().size(); i++) {
+            for (int i = 0; i < mSensors.getMarkers().size(); i++) {
 
                 // размер маркера зависит от дальности до его местоположения
                 // возможно, впоследствии он будет, наоборот, больше с расстоянием, только прозрачнее
-                int bitmapSize = getBitmapSizeOnDistance(mInterfaceOverlay.getLocation().distanceTo(
-                        mInterfaceOverlay.getMarkers().get(i)));
+                int bitmapSize = getBitmapSizeOnDistance(mSensors.getLocation().distanceTo(
+                        mSensors.getMarkers().get(i)));
 
                 Bitmap bitmap = Bitmap.createScaledBitmap(mBitmap,
                         bitmapSize,
@@ -135,8 +139,8 @@ class ViewOverlay extends SurfaceView implements SurfaceHolder.Callback {
                         false);
 
                 // высчитываем угол между направлением взгляда и азимутом маркера
-                double azimuth = Utility.formatPiMinusPi(mInterfaceOverlay.getLocation().bearingTo(
-                        mInterfaceOverlay.getMarkers().get(i)) - Utility.formatPiMinusPi(mInterfaceOverlay.getAzimuth()+ mCorrection));
+                double azimuth = Utility.formatPiMinusPi(mSensors.getLocation().bearingTo(
+                        mSensors.getMarkers().get(i)) - Utility.formatPiMinusPi(mSensors.getAzimuth()+ mCorrection));
 
                 // если этот угол попадает в поле зрения, рисуем его в соответствующем месте
                 if (azimuth > -FIELD_OF_VIEW && azimuth < FIELD_OF_VIEW) {
@@ -158,7 +162,7 @@ class ViewOverlay extends SurfaceView implements SurfaceHolder.Callback {
         }
         // очищаем холст и обнуляем координаты, чтобы не срабатывали нажатия
         else {
-            mInterfaceOverlay.showWarning();
+            notifyObservers(true);
             canvas.drawColor(0, PorterDuff.Mode.CLEAR);
             mX = NULL_FLOAT;
             for (int i = 0; i < mYList.size(); i++) {
@@ -182,7 +186,7 @@ class ViewOverlay extends SurfaceView implements SurfaceHolder.Callback {
             if (touchX > mX - TOUCH_SIZE && touchX < mX + TOUCH_SIZE) {
                 for (int i = 0; i < mYList.size(); i++) {
                     if (touchY > mYList.get(i) - TOUCH_SIZE && touchY < mYList.get(i) + TOUCH_SIZE) {
-                        openLocationOnMap(mInterfaceOverlay.getMarkers().get(i));
+                        openDetailView(mSensors.getMarkers().get(i));
                     }
                 }
             }
@@ -190,23 +194,15 @@ class ViewOverlay extends SurfaceView implements SurfaceHolder.Callback {
         return true;
     }
 
-    // при касании маркера открываем Google Maps с содежращейся в маркере локацией
-    private void openLocationOnMap(Location location) {
+    // при касании маркера открываем ActivityDetail с информацией о маркере
+    private void openDetailView(Location location) {
 
-        String locationString = "geo:".concat(String.valueOf(location.getLatitude())).concat(",")
-                .concat(String.valueOf(location.getLongitude()));
-        Uri geoLocation = Uri.parse(locationString);
-
-        Intent intent = new Intent(Intent.ACTION_VIEW);
-        intent.setData(geoLocation);
-
-        Log.i(FragmentOverlay.LOG_TAG, locationString);
-
-        if (intent.resolveActivity(mContext.getPackageManager()) != null) {
-            mContext.startActivity(intent);
-        } else {
-            Log.d(FragmentOverlay.LOG_TAG, "Couldn't resolve");
-        }
+        Intent intent = new Intent(mContext, ActivityDetail.class);
+        Bundle bundle = new Bundle();
+        bundle.putDouble(ActivityDetail.BUNDLE_LAT, location.getLatitude());
+        bundle.putDouble(ActivityDetail.BUNDLE_LONG, location.getLongitude());
+        intent.putExtras(bundle);
+        mContext.startActivity(intent);
     }
 
     @Override
@@ -236,5 +232,23 @@ class ViewOverlay extends SurfaceView implements SurfaceHolder.Callback {
     public void surfaceDestroyed(SurfaceHolder holder) {
         if (null != mDrawingThread)
             mDrawingThread.interrupt();
+    }
+
+    @Override
+    public void registerObserver(ObserverWarning o) {
+        mObserversWarning.add(o);
+
+    }
+
+    @Override
+    public void removeObserver(ObserverWarning o) {
+        mObserversWarning.remove(o);
+    }
+
+    @Override
+    public void notifyObservers(boolean visible) {
+        for (ObserverWarning observer : mObserversWarning) {
+            observer.update(visible, mOrientation);
+        }
     }
 }
