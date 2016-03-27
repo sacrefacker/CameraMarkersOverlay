@@ -2,6 +2,7 @@ package com.example.al.cameramarkersoverlay;
 
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
@@ -20,7 +21,6 @@ import android.support.v4.app.Fragment;
 import android.support.v4.app.LoaderManager;
 import android.support.v4.content.CursorLoader;
 import android.support.v4.content.Loader;
-import android.util.AttributeSet;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.LayoutInflater;
@@ -37,15 +37,14 @@ import com.example.al.cameramarkersoverlay.data.MarkersContract;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.jar.Attributes;
 
 public class FragmentOverlay extends Fragment
         implements SensorEventListener, LoaderManager.LoaderCallbacks<Cursor>,
         InterfaceSensors {
 
     private static final String LOG_TAG = FragmentOverlay.class.getSimpleName();
-    private static final String BUNDLE_LOCATION = "location";
-    private static final String BUNDLE_MARKERS = "markers";
+    private static final String PREFS_LAT = "lat";
+    private static final String PREFS_LONG = "long";
 
     // id для CursorLoader
     private static final int MARKER_LOADER = 0;
@@ -85,7 +84,7 @@ public class FragmentOverlay extends Fragment
     private boolean mIsPreviewing;
 
     // данные, которые понадобятся для отрисовки маркеров
-    private Location mLocation;
+    private Location mLocation = null;
     private ArrayList<Location> mMarkers;
     private double mAzimuth;
     private double mPitch;
@@ -128,13 +127,8 @@ public class FragmentOverlay extends Fragment
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Log.i(LOG_TAG, "onCreate");
         mContext = getActivity();
-
-        // вынимаем локацию, чтобы при смене ориентации и др. не ждать новую каждый раз
-        if (savedInstanceState != null) {
-            mLocation = savedInstanceState.getParcelable(BUNDLE_LOCATION);
-            mMarkers = savedInstanceState.getParcelableArrayList(BUNDLE_MARKERS);
-        }
 
         mLocationManager = (LocationManager) mContext.getSystemService(Context.LOCATION_SERVICE);
         if (mLocationManager == null) {
@@ -162,8 +156,6 @@ public class FragmentOverlay extends Fragment
         mOrientationAverage = new float[3];
 
         mMarkers = new ArrayList<>();
-
-        // пока что пытается "скачать" маркеры при каждом запуске
         downloadMarkers();
     }
 
@@ -171,9 +163,9 @@ public class FragmentOverlay extends Fragment
         new TaskDownloadMarkers(getContext()).execute();
     }
 
-
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle bundle) {
+        Log.i(LOG_TAG, "onCreateView");
 
         View rootView = inflater.inflate(R.layout.fragment_overlay, container, false);
 
@@ -223,6 +215,7 @@ public class FragmentOverlay extends Fragment
     @Override
     public void onResume() {
         super.onResume();
+        Log.i(LOG_TAG, "onResume");
 
         try {
             // Обновления локации от провайдера
@@ -254,8 +247,19 @@ public class FragmentOverlay extends Fragment
             }
         }
 
+//        resumeLocation();
+
         startPreview();
         mOverlaySurface.setVisibility(View.VISIBLE);
+    }
+
+    private void resumeLocation() {
+        if (mLocation == null) {
+            mLocation = new Location(LocationManager.NETWORK_PROVIDER);
+            SharedPreferences prefs = getActivity().getPreferences(Context.MODE_PRIVATE);
+            mLocation.setLatitude(Double.longBitsToDouble(prefs.getLong(PREFS_LAT, 0)));
+            mLocation.setLongitude(Double.longBitsToDouble(prefs.getLong(PREFS_LONG, 0)));
+        }
     }
 
     @Override
@@ -309,22 +313,16 @@ public class FragmentOverlay extends Fragment
     }
 
     @Override
-    public void onSaveInstanceState(Bundle outState) {
-        super.onSaveInstanceState(outState);
-
-        // сохраняем локацию, чтобы потом не ждать
-        outState.putParcelable(BUNDLE_LOCATION, mLocation);
-        outState.putParcelableArrayList(BUNDLE_MARKERS, mMarkers);
-    }
-
-    @Override
     public void onPause() {
+        Log.i(LOG_TAG, "onPause");
         try {
             mLocationManager.removeUpdates(mLocationListener);
         }
         catch (SecurityException ex) {
             ex.printStackTrace();
         }
+
+//        saveLocation();
 
         mSensorManager.unregisterListener(this);
 
@@ -333,16 +331,18 @@ public class FragmentOverlay extends Fragment
         super.onPause();
     }
 
+    private void saveLocation() {
+        SharedPreferences prefs = getActivity().getPreferences(Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = prefs.edit();
+        editor.putLong(PREFS_LAT, Double.doubleToLongBits(mLocation.getLatitude()));
+        editor.putLong(PREFS_LONG, Double.doubleToLongBits(mLocation.getLongitude()));
+        editor.apply();
+    }
+
     @Override
     public void onDestroy() {
         releaseCameraResources();
         super.onDestroy();
-    }
-
-    @Override
-    public void onActivityCreated(Bundle savedInstanceState) {
-        getLoaderManager().initLoader(MARKER_LOADER, null, this);
-        super.onActivityCreated(savedInstanceState);
     }
 
     @Override
