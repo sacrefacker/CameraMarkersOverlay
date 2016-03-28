@@ -1,6 +1,7 @@
 package com.example.al.cameramarkersoverlay;
 
 
+import android.app.FragmentManager;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.database.Cursor;
@@ -126,8 +127,8 @@ public class FragmentOverlay extends Fragment
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
         Log.i(LOG_TAG, "onCreate");
+        super.onCreate(savedInstanceState);
         mContext = getActivity();
 
         mLocationManager = (LocationManager) mContext.getSystemService(Context.LOCATION_SERVICE);
@@ -182,7 +183,8 @@ public class FragmentOverlay extends Fragment
         mOverlaySurface = new ViewOverlay(
                 mContext,
                 BitmapFactory.decodeResource(getResources(), android.R.drawable.ic_delete),
-                this
+                this,
+                getFragmentManager()
         );
         mOverlaySurface.registerObserver(new WarningOverlayHandler());
         mOverlaySurface.setZOrderMediaOverlay(true);
@@ -214,8 +216,8 @@ public class FragmentOverlay extends Fragment
 
     @Override
     public void onResume() {
-        super.onResume();
         Log.i(LOG_TAG, "onResume");
+        super.onResume();
 
         try {
             // Обновления локации от провайдера
@@ -341,12 +343,14 @@ public class FragmentOverlay extends Fragment
 
     @Override
     public void onDestroy() {
+        Log.i(LOG_TAG, "onDestroy");
         releaseCameraResources();
         super.onDestroy();
     }
 
     @Override
     public void onActivityCreated(Bundle savedInstanceState) {
+        Log.i(LOG_TAG, "onActivityCreated");
         getLoaderManager().initLoader(MARKER_LOADER, null, this);
         super.onActivityCreated(savedInstanceState);
     }
@@ -397,13 +401,24 @@ public class FragmentOverlay extends Fragment
 
         @Override
         public void update(boolean visible, double orientation) {
-            if (mIsVisible != visible) {
-                mIsVisible = visible;
+            if (mOrientation != orientation) {
                 mOrientation = orientation;
                 getActivity().runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-                        rotateIfNeeded();
+                        if (mOrientation == ViewOverlay.LEFT_ROLL) {
+                            mWarningView.setRotation(180);
+                        } else if (mOrientation == ViewOverlay.RIGHT_ROLL) {
+                            mWarningView.setRotation(0);
+                        }
+                    }
+                });
+            }
+            if (mIsVisible != visible) {
+                mIsVisible = visible;
+                getActivity().runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
                         if (mIsVisible) {
                             mWarningView.setVisibility(View.VISIBLE);
                         }
@@ -412,14 +427,6 @@ public class FragmentOverlay extends Fragment
                         }
                     }
                 });
-            }
-        }
-
-        private void rotateIfNeeded() {
-            if (mOrientation == ViewOverlay.LEFT_ROLL) {
-                mWarningView.setRotation(180);
-            } else if (mOrientation == ViewOverlay.RIGHT_ROLL) {
-                mWarningView.setRotation(0);
             }
         }
     }

@@ -26,17 +26,6 @@
             android:name=".data.MarkersProvider"
             android:authorities="com.example.al.cameramarkersoverlay.app" />
 
-        <activity
-            android:name=".ActivityDetail"
-            android:theme="@android:style/Theme.Dialog"
-            android:label="@string/label_details_activity"
-            android:parentActivityName="ActivityMain" >
-            <!-- The meta-data element is needed for versions lower than 4.1 -->
-            <meta-data
-                android:name="android.support.PARENT_ACTIVITY"
-                android:value="ActivityMain" />
-        </activity>
-
     </application>
 
 </manifest>

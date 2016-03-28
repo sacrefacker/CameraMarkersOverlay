@@ -1,5 +1,8 @@
 package com.example.al.cameramarkersoverlay;
 
+import android.app.DialogFragment;
+import android.app.Fragment;
+import android.support.v4.app.FragmentManager;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
@@ -20,6 +23,7 @@ import java.util.List;
 class ViewOverlay extends SurfaceView implements SurfaceHolder.Callback, ObservableWarning {
 
     private static final String LOG_TAG = ViewOverlay.class.getSimpleName();
+    private static final String FRAGMENT_TAG = "fragmentDialog";
 
     private static final double FIELD_OF_VIEW = 40.0;
     private static final double ROLL_TOLERANCE = 10.0;
@@ -39,6 +43,7 @@ class ViewOverlay extends SurfaceView implements SurfaceHolder.Callback, Observa
     private double mCorrection = AZIMUTH_ORIENTATION_CORRECTION_RIGHT;
 
     private Context mContext;
+    private FragmentManager mFragmentManager;
 
     private InterfaceSensors mSensors;
     private List<ObserverWarning> mObserversWarning;
@@ -54,10 +59,11 @@ class ViewOverlay extends SurfaceView implements SurfaceHolder.Callback, Observa
     private float mX = NULL_FLOAT;
     private float mCanvasHalfWidth = 0, mCanvasHalfHeight = 0;
 
-    public ViewOverlay(Context context, Bitmap bitmap, InterfaceSensors interfaceSensors) {
+    public ViewOverlay(Context context, Bitmap bitmap, InterfaceSensors interfaceSensors, FragmentManager fragmentManager) {
 
         super(context);
         mContext = context;
+        mFragmentManager = fragmentManager;
         mSensors = interfaceSensors;
         mObserversWarning = new ArrayList<>();
 
@@ -197,12 +203,15 @@ class ViewOverlay extends SurfaceView implements SurfaceHolder.Callback, Observa
     // при касании маркера открываем ActivityDetail с информацией о маркере
     private void openDetailView(Location location) {
 
-        Intent intent = new Intent(mContext, ActivityDetail.class);
-        Bundle bundle = new Bundle();
-        bundle.putDouble(ActivityDetail.BUNDLE_LAT, location.getLatitude());
-        bundle.putDouble(ActivityDetail.BUNDLE_LONG, location.getLongitude());
-        intent.putExtras(bundle);
-        mContext.startActivity(intent);
+//        Intent intent = new Intent(mContext, ActivityDetail.class);
+//        Bundle bundle = new Bundle();
+//        bundle.putDouble(ActivityDetail.BUNDLE_LAT, location.getLatitude());
+//        bundle.putDouble(ActivityDetail.BUNDLE_LONG, location.getLongitude());
+//        intent.putExtras(bundle);
+//        mContext.startActivity(intent);
+
+        FragmentDialog dialogFragment = new FragmentDialog();
+        dialogFragment.show(mFragmentManager, FRAGMENT_TAG);
     }
 
     @Override
