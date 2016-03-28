@@ -17,4 +17,6 @@ public interface InterfaceSensors {
 
     public double getRoll();
 
+    public int getScreenRotation();
+
 }

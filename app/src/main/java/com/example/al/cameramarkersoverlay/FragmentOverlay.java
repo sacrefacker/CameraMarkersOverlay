@@ -1,7 +1,6 @@
 package com.example.al.cameramarkersoverlay;
 
 
-import android.app.FragmentManager;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.database.Cursor;
@@ -25,10 +24,12 @@ import android.support.v4.content.Loader;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.LayoutInflater;
+import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowManager;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -93,7 +94,6 @@ public class FragmentOverlay extends Fragment
 
     private ViewOverlay mOverlaySurface;
     private TextView mAzimuthView;
-    private TextView mLocationView;
     private ImageView mWarningView;
 
     public FragmentOverlay() {
@@ -123,6 +123,12 @@ public class FragmentOverlay extends Fragment
     @Override
     public double getRoll() {
         return mRoll;
+    }
+
+    @Override
+    public int getScreenRotation() {
+        WindowManager wm = ((WindowManager) mContext.getSystemService(Context.WINDOW_SERVICE));
+        return wm.getDefaultDisplay().getRotation();
     }
 
     @Override
@@ -206,11 +212,6 @@ public class FragmentOverlay extends Fragment
         mAzimuthView.setTextColor(Color.RED);
         frameLayout.addView(mAzimuthView);
 
-        mLocationView = new TextView(mContext);
-        mLocationView.setTextAppearance(mContext, android.R.style.TextAppearance_Medium);
-        mLocationView.setTextColor(Color.RED);
-        frameLayout.addView(mLocationView);
-
         return rootView;
     }
 
@@ -282,7 +283,7 @@ public class FragmentOverlay extends Fragment
         if (mGravity != null && mGeomagnetic != null) {
             float rotationMatrix[] = new float[9];
 
-            // использует данные акселерометра и магнетометра для вычисления положения телефона относительно внешнего мира
+            // использует данные акселерометра и магнетометра для вычисления положения телефона
             if (SensorManager.getRotationMatrix(rotationMatrix, null, mGravity, mGeomagnetic)) {
                 float orientationMatrix[] = new float[3];
 
@@ -295,13 +296,6 @@ public class FragmentOverlay extends Fragment
                 mRoll = Math.toDegrees(mOrientationAverage[2]);
 
                 mAzimuthView.setText(String.format(mContext.getString(R.string.format_azimuth), mAzimuth));
-                if (mLocation != null) {
-                    mLocationView.setText(String.format(mContext.getString(R.string.format_location),
-                            mLocation.getLatitude(), mLocation.getLongitude()));
-                }
-                else {
-                    mLocationView.setText(" ");
-                }
 
                 // обнуляем данные, чтобы ждать новые - так они каждый раз будут свеженькими
                 mGravity = mGeomagnetic = null;
@@ -326,6 +320,8 @@ public class FragmentOverlay extends Fragment
 
         saveLocation();
 
+        releaseCameraResources();
+
         mSensorManager.unregisterListener(this);
 
         mOverlaySurface.setVisibility(View.INVISIBLE);
@@ -339,13 +335,6 @@ public class FragmentOverlay extends Fragment
         editor.putLong(PREFS_LAT, Double.doubleToLongBits(mLocation.getLatitude()));
         editor.putLong(PREFS_LONG, Double.doubleToLongBits(mLocation.getLongitude()));
         editor.apply();
-    }
-
-    @Override
-    public void onDestroy() {
-        Log.i(LOG_TAG, "onDestroy");
-        releaseCameraResources();
-        super.onDestroy();
     }
 
     @Override
@@ -397,23 +386,9 @@ public class FragmentOverlay extends Fragment
 
     private class WarningOverlayHandler implements ObserverWarning {
         boolean mIsVisible = false;
-        double mOrientation = ViewOverlay.NO_ROLL;
 
         @Override
-        public void update(boolean visible, double orientation) {
-            if (mOrientation != orientation) {
-                mOrientation = orientation;
-                getActivity().runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        if (mOrientation == ViewOverlay.LEFT_ROLL) {
-                            mWarningView.setRotation(180);
-                        } else if (mOrientation == ViewOverlay.RIGHT_ROLL) {
-                            mWarningView.setRotation(0);
-                        }
-                    }
-                });
-            }
+        public void update(boolean visible) {
             if (mIsVisible != visible) {
                 mIsVisible = visible;
                 getActivity().runOnUiThread(new Runnable() {
@@ -474,7 +449,23 @@ public class FragmentOverlay extends Fragment
             }
             stopPreview();
 
-            mCamera.setDisplayOrientation(90);
+            int screenRotation = getScreenRotation();
+            switch (screenRotation) {
+                case Surface.ROTATION_90:
+                    Log.i(LOG_TAG, "ROTATION_90");
+                    mCamera.setDisplayOrientation(0);
+                    break;
+                case Surface.ROTATION_270:
+                    Log.i(LOG_TAG, "ROTATION_270");
+                    mCamera.setDisplayOrientation(180);
+                    break;
+                case Surface.ROTATION_0:
+                    Log.i(LOG_TAG, "ROTATION_0");
+                default:
+                    Log.i(LOG_TAG, "default");
+                    mCamera.setDisplayOrientation(90);
+                    break;
+            }
 
             // инициализировать поверхность отображения просмотра
             try {
