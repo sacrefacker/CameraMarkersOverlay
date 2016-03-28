@@ -200,17 +200,13 @@ class ViewOverlay extends SurfaceView implements SurfaceHolder.Callback, Observa
         return true;
     }
 
-    // при касании маркера открываем ActivityDetail с информацией о маркере
+    // при касании маркера открываем диалог с информацией о маркере
     private void openDetailView(Location location) {
-
-//        Intent intent = new Intent(mContext, ActivityDetail.class);
-//        Bundle bundle = new Bundle();
-//        bundle.putDouble(ActivityDetail.BUNDLE_LAT, location.getLatitude());
-//        bundle.putDouble(ActivityDetail.BUNDLE_LONG, location.getLongitude());
-//        intent.putExtras(bundle);
-//        mContext.startActivity(intent);
-
         FragmentDialog dialogFragment = new FragmentDialog();
+        Bundle bundle = new Bundle();
+        bundle.putDouble(FragmentDialog.BUNDLE_LAT, location.getLatitude());
+        bundle.putDouble(FragmentDialog.BUNDLE_LONG, location.getLongitude());
+        dialogFragment.setArguments(bundle);
         dialogFragment.show(mFragmentManager, FRAGMENT_TAG);
     }
 
