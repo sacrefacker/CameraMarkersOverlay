@@ -110,8 +110,13 @@ class ViewOverlay extends SurfaceView implements SurfaceHolder.Callback, Observa
             canvas.drawCircle(mCanvasHalfWidth, mCanvasHalfHeight, 10.0f, mCirclePainter);
 
             // положение маркеров по вертикали - общее для всех (минус размер самого маркера)
-            mY = mCanvasHalfHeight
-                    + ((float) ((mSensors.getRoll() - mOnSide) / ROLL_TOLERANCE * mCanvasHalfHeight));
+            mY = mCanvasHalfHeight;
+            if (mOnSide == RIGHT_SIDE) {
+                mY += ((float) ((mSensors.getRoll() - mOnSide) / ROLL_TOLERANCE * mCanvasHalfHeight));
+            }
+            else {
+                mY -= ((float) ((mSensors.getRoll() - mOnSide) / ROLL_TOLERANCE * mCanvasHalfHeight));
+            }
 
             // отрисовка каждого маркера
             for (int i = 0; i < mSensors.getMarkers().size(); i++) {
