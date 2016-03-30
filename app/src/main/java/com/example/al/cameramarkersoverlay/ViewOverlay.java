@@ -124,7 +124,7 @@ class ViewOverlay extends SurfaceView implements SurfaceHolder.Callback, Observa
                 // размер маркера зависит от дальности до его местоположения
                 // возможно, впоследствии он будет, наоборот, больше с расстоянием, только прозрачнее
                 int bitmapSize = getBitmapSizeOnDistance(mSensors.getLocation().distanceTo(
-                        mSensors.getMarkers().get(i)));
+                        mSensors.getMarkers().get(i).getLocation()));
 
                 Bitmap bitmap = Bitmap.createScaledBitmap(mBitmap,
                         bitmapSize,
@@ -133,7 +133,7 @@ class ViewOverlay extends SurfaceView implements SurfaceHolder.Callback, Observa
 
                 // высчитываем угол между направлением взгляда и азимутом маркера
                 double azimuth = Utility.formatPiMinusPi(mSensors.getLocation().bearingTo(
-                        mSensors.getMarkers().get(i)) - Utility.formatPiMinusPi(
+                        mSensors.getMarkers().get(i).getLocation()) - Utility.formatPiMinusPi(
                         mSensors.getAzimuth()+ mCorrection));
 
                 // если этот угол попадает в поле зрения, рисуем его в соответствующем месте
@@ -197,7 +197,7 @@ class ViewOverlay extends SurfaceView implements SurfaceHolder.Callback, Observa
             if (touchY > mY - TOUCH_SIZE && touchY < mY + TOUCH_SIZE) {
                 for (int i = 0; i < mXs.size(); i++) {
                     if (touchX > mXs.get(i) - TOUCH_SIZE && touchX < mXs.get(i) + TOUCH_SIZE) {
-                        openDetailView(mSensors.getMarkers().get(i));
+                        openDetailView(mSensors.getMarkers().get(i).getLocation());
                     }
                 }
             }

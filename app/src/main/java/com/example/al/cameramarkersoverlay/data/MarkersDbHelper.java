@@ -9,7 +9,7 @@ import com.example.al.cameramarkersoverlay.data.MarkersContract.MarkersEntry;
 public class MarkersDbHelper extends SQLiteOpenHelper {
 
     // If you change the database schema, you must increment the database version.
-    private static final int DATABASE_VERSION = 1;
+    private static final int DATABASE_VERSION = 2;
 
     static final String DATABASE_NAME = "markers.db";
 
@@ -30,24 +30,14 @@ public class MarkersDbHelper extends SQLiteOpenHelper {
 
                 // Может потребоваться not null
 
-//                MarkersEntry.COLUMN_CHANNEL + " INTEGER NOT NULL, " +
-//                MarkersEntry.COLUMN_IMAGE + " TEXT NOT NULL, " +
-//                MarkersEntry.COLUMN_DESCRIPTION + " TEXT NOT NULL," +
-//                MarkersEntry.COLUMN_TYPE + " TEXT NOT NULL, " +
-//                MarkersEntry.COLUMN_LAT + " REAL NOT NULL, " +
-//                MarkersEntry.COLUMN_LONG + " REAL NOT NULL, " +
-//                MarkersEntry.COLUMN_DATE + " INTEGER NOT NULL, " +
-//                MarkersEntry.COLUMN_ALT + " REAL NOT NULL, " +
-//                MarkersEntry.COLUMN_ID + " INTEGER NOT NULL, " +
-
-                MarkersEntry.COLUMN_CHANNEL + " INTEGER, " +
-                MarkersEntry.COLUMN_IMAGE + " TEXT, " +
-                MarkersEntry.COLUMN_DESCRIPTION + " TEXT," +
-                MarkersEntry.COLUMN_TYPE + " TEXT, " +
+                MarkersEntry.COLUMN_NAME + " TEXT," +
                 MarkersEntry.COLUMN_LAT + " REAL NOT NULL, " +
                 MarkersEntry.COLUMN_LONG + " REAL NOT NULL, " +
-                MarkersEntry.COLUMN_DATE + " INTEGER, " +
                 MarkersEntry.COLUMN_ALT + " REAL, " +
+                MarkersEntry.COLUMN_IMAGE + " TEXT, " +
+                MarkersEntry.COLUMN_DATE + " INTEGER, " +
+                MarkersEntry.COLUMN_BC + " TEXT, " +
+                MarkersEntry.COLUMN_CHANNEL + " INTEGER, " +
                 MarkersEntry.COLUMN_ID + " INTEGER, " +
 
                 // From intuition the coordinates should be unique

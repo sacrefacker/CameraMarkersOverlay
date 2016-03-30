@@ -41,14 +41,14 @@ public class MarkersContract {
 
         public static final String TABLE_NAME = "markers";
 
-        public static final String COLUMN_CHANNEL = "channel_id";
-        public static final String COLUMN_IMAGE = "image_url";
-        public static final String COLUMN_DESCRIPTION = "description";
-        public static final String COLUMN_TYPE = "type";
+        public static final String COLUMN_NAME = "name";
         public static final String COLUMN_LAT = "coordinate0";
         public static final String COLUMN_LONG = "coordinate1";
-        public static final String COLUMN_DATE = "date";
         public static final String COLUMN_ALT = "alt";
+        public static final String COLUMN_IMAGE = "image_url";
+        public static final String COLUMN_DATE = "date";
+        public static final String COLUMN_BC = "bc";
+        public static final String COLUMN_CHANNEL = "channel_id";
         public static final String COLUMN_ID = "server_id";
     }
 }

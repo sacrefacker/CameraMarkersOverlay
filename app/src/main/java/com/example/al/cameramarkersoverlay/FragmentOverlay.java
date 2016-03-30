@@ -35,16 +35,20 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import com.example.al.cameramarkersoverlay.data.LocationMarker;
 import com.example.al.cameramarkersoverlay.data.MarkersContract;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 
 public class FragmentOverlay extends Fragment
         implements SensorEventListener, LoaderManager.LoaderCallbacks<Cursor>,
         InterfaceSensors {
 
     private static final String LOG_TAG = FragmentOverlay.class.getSimpleName();
+    private static final String PREFS_Q_LAT = "qLat";
+    private static final String PREFS_Q_LONG = "qLong";
     private static final String PREFS_LAT = "lat";
     private static final String PREFS_LONG = "long";
 
@@ -54,6 +58,7 @@ public class FragmentOverlay extends Fragment
     // для регистрации менеджеров локации
     private static final long POLLING_FREQ = 1000 * 10;
     private static final float MIN_DISTANCE = 10.0f;
+    private static final float DISTANCE_BEFORE_MARKERS_UPDATE = 500.0f;
 
     // выбираем колонки таблицы для извлечения курсором из БД
     private static final String[] MARKERS_COLUMNS = {
@@ -85,9 +90,10 @@ public class FragmentOverlay extends Fragment
     private SurfaceHolder mCameraHolder;
     private boolean mIsPreviewing;
 
+    private Location mQueryLocation = null; // локация, из которой запрашивались точки с сервера
     // данные, которые понадобятся для отрисовки маркеров
-    private Location mLocation = null;
-    private ArrayList<Location> mMarkers;
+    private Location mLocation = null; // текущая локация
+    private ArrayList<LocationMarker> mMarkers;
     private double mAzimuth;
     private double mPitch;
     private double mRoll;
@@ -111,7 +117,7 @@ public class FragmentOverlay extends Fragment
     }
 
     @Override
-    public ArrayList<Location> getMarkers() {
+    public ArrayList<LocationMarker> getMarkers() {
         return mMarkers;
     }
 
@@ -144,7 +150,21 @@ public class FragmentOverlay extends Fragment
 
         mLocationListener = new LocationListener() {
             public void onLocationChanged(Location location) {
-                mLocation = location;
+                if (mLocation == null) {
+                    mLocation = location;
+                    initLoader();
+                }
+                else {
+                    mLocation = location;
+                }
+                // если достаточно отошли от места, с которого запрашивали точки с сервера
+                // (или не запрашивали вообще), делаем это ещё раз
+                if (mQueryLocation == null
+                        || mQueryLocation.distanceTo(mLocation) > DISTANCE_BEFORE_MARKERS_UPDATE) {
+
+                    downloadMarkers();
+                    mQueryLocation = new Location(mLocation);
+                }
             }
             public void onStatusChanged(String provider, int status, Bundle extras) {
                 //
@@ -163,7 +183,6 @@ public class FragmentOverlay extends Fragment
         mOrientationAverage = new float[3];
 
         mMarkers = new ArrayList<>();
-        downloadMarkers();
     }
 
     private void downloadMarkers() {
@@ -257,11 +276,20 @@ public class FragmentOverlay extends Fragment
     }
 
     private void resumeLocation() {
-        if (mLocation == null) {
+        SharedPreferences prefs = getActivity().getPreferences(Context.MODE_PRIVATE);
+        double qLat = Double.longBitsToDouble(prefs.getLong(PREFS_Q_LAT, 0));
+        double qLon = Double.longBitsToDouble(prefs.getLong(PREFS_Q_LONG, 0));
+        if (mQueryLocation == null && qLat != 0.0 && qLon != 0.0) {
+            mQueryLocation = new Location(LocationManager.NETWORK_PROVIDER);
+            mQueryLocation.setLatitude(qLat);
+            mQueryLocation.setLongitude(qLon);
+        }
+        double lat = Double.longBitsToDouble(prefs.getLong(PREFS_LAT, 0));
+        double lon = Double.longBitsToDouble(prefs.getLong(PREFS_LONG, 0));
+        if (mLocation == null && lat != 0.0 && lon != 0.0) {
             mLocation = new Location(LocationManager.NETWORK_PROVIDER);
-            SharedPreferences prefs = getActivity().getPreferences(Context.MODE_PRIVATE);
-            mLocation.setLatitude(Double.longBitsToDouble(prefs.getLong(PREFS_LAT, 0)));
-            mLocation.setLongitude(Double.longBitsToDouble(prefs.getLong(PREFS_LONG, 0)));
+            mLocation.setLatitude(lat);
+            mLocation.setLongitude(lon);
         }
     }
 
@@ -332,16 +360,26 @@ public class FragmentOverlay extends Fragment
     private void saveLocation() {
         SharedPreferences prefs = getActivity().getPreferences(Context.MODE_PRIVATE);
         SharedPreferences.Editor editor = prefs.edit();
-        editor.putLong(PREFS_LAT, Double.doubleToLongBits(mLocation.getLatitude()));
-        editor.putLong(PREFS_LONG, Double.doubleToLongBits(mLocation.getLongitude()));
+        if (mQueryLocation != null) {
+            editor.putLong(PREFS_Q_LAT, Double.doubleToLongBits(mQueryLocation.getLatitude()));
+            editor.putLong(PREFS_Q_LONG, Double.doubleToLongBits(mQueryLocation.getLongitude()));
+        }
+        if (mLocation != null) {
+            editor.putLong(PREFS_LAT, Double.doubleToLongBits(mLocation.getLatitude()));
+            editor.putLong(PREFS_LONG, Double.doubleToLongBits(mLocation.getLongitude()));
+        }
         editor.apply();
     }
 
     @Override
     public void onActivityCreated(Bundle savedInstanceState) {
         Log.i(LOG_TAG, "onActivityCreated");
-        getLoaderManager().initLoader(MARKER_LOADER, null, this);
+        initLoader();
         super.onActivityCreated(savedInstanceState);
+    }
+
+    private void initLoader() {
+        getLoaderManager().initLoader(MARKER_LOADER, null, this);
     }
 
     @Override
@@ -360,22 +398,27 @@ public class FragmentOverlay extends Fragment
 
     @Override
     public void onLoadFinished(Loader<Cursor> cursorLoader, Cursor cursor) {
+        Log.i(LOG_TAG, "LoaderFinished");
         mMarkers = cursorToList(cursor);
     }
 
-    private ArrayList<Location> cursorToList(Cursor cursor) {
-        ArrayList<Location> markers = new ArrayList<>();
+    private ArrayList<LocationMarker> cursorToList(Cursor cursor) {
+        ArrayList<LocationMarker> markers = new ArrayList<>();
+        Log.i(LOG_TAG, "Cursor entries count = " + cursor.getCount());
 
         // заполняем ArrayList из многострочного курсора
         for (cursor.moveToFirst(); !cursor.isAfterLast(); cursor.moveToNext()) {
-            Location location = new Location(LocationManager.NETWORK_PROVIDER);
-            location.setLatitude(cursor.getDouble(CURSOR_COLUMN_LAT));
-            location.setLongitude(cursor.getDouble(CURSOR_COLUMN_LONG));
-            markers.add(location);
+            LocationMarker locationMarker = new LocationMarker(
+                    cursor.getDouble(CURSOR_COLUMN_LAT),
+                    cursor.getDouble(CURSOR_COLUMN_LONG));
+            locationMarker.setDistance(mLocation.distanceTo(locationMarker.getLocation()));
+            markers.add(locationMarker);
 
             // задокументируем прекрасную работу
-            Log.i(LOG_TAG, "Adding location from cursor: " + location.toString());
+            Log.i(LOG_TAG, "Adding location from cursor: " + locationMarker.getInfo());
         }
+        Collections.sort(mMarkers);
+
         return markers;
     }
 
