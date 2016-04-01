@@ -96,6 +96,9 @@ public class LocationMarker implements Comparable<LocationMarker> {
 
     @Override
     public int compareTo(LocationMarker in) {
+        if (this.getDistance() == null || in.getDistance() == null) {
+            return 0;
+        }
         if (this.getDistance().equals(in.getDistance())) {
             return 0;
         }

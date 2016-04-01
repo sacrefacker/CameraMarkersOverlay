@@ -47,6 +47,7 @@ public class FragmentOverlay extends Fragment
         InterfaceSensors {
 
     private static final String LOG_TAG = FragmentOverlay.class.getSimpleName();
+    // для сохранения в shared preferences
     private static final String PREFS_Q_LAT = "qLat";
     private static final String PREFS_Q_LONG = "qLong";
     private static final String PREFS_LAT = "lat";
@@ -62,20 +63,17 @@ public class FragmentOverlay extends Fragment
 
     // выбираем колонки таблицы для извлечения курсором из БД
     private static final String[] MARKERS_COLUMNS = {
-            MarkersContract.MarkersEntry._ID,
             MarkersContract.MarkersEntry.COLUMN_LAT,
             MarkersContract.MarkersEntry.COLUMN_LONG
     };
     // для получения значений из курсора
-    private static final int CURSOR__ID = 0;
-    private static final int CURSOR_COLUMN_LAT = 1;
-    private static final int CURSOR_COLUMN_LONG = 2;
+    private static final int CURSOR_COLUMN_LAT = 0;
+    private static final int CURSOR_COLUMN_LONG = 1;
 
     private Context mContext;
 
     private LocationManager mLocationManager;
     private LocationListener mLocationListener;
-
     private SensorManager mSensorManager;
     private Sensor mAccelerometer;
     private Sensor mMagnetometer;
@@ -411,7 +409,9 @@ public class FragmentOverlay extends Fragment
             LocationMarker locationMarker = new LocationMarker(
                     cursor.getDouble(CURSOR_COLUMN_LAT),
                     cursor.getDouble(CURSOR_COLUMN_LONG));
-            locationMarker.setDistance(mLocation.distanceTo(locationMarker.getLocation()));
+            if (mLocation != null) {
+                locationMarker.setDistance(mLocation.distanceTo(locationMarker.getLocation()));
+            }
             markers.add(locationMarker);
 
             // задокументируем прекрасную работу
