@@ -160,6 +160,7 @@ public class FragmentOverlay extends Fragment
                 if (mQueryLocation == null
                         || mQueryLocation.distanceTo(mLocation) > DISTANCE_BEFORE_MARKERS_UPDATE) {
 
+                    Log.i(LOG_TAG, "Downloading markers");
                     downloadMarkers();
                     mQueryLocation = new Location(mLocation);
                 }
@@ -267,6 +268,7 @@ public class FragmentOverlay extends Fragment
             }
         }
 
+        // TODO: comment this line to debug downloading
         resumeLocation();
 
         startPreview();
