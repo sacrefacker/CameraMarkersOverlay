@@ -33,5 +33,10 @@
 
     <!-- TODO: Remove or change this placeholder text -->
     <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="title_activity_activity_menu">ActivityMenu</string>
+    <string name="main_menu_overlay_desc">Open main view</string>
+    <string name="main_menu_filters_desc">Change filters</string>
+    <string name="main_menu_find_desc">Find a place</string>
+    <string name="main_menu_settings_desc">Settings</string>
 
 </resources>

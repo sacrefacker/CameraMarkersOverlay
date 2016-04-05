@@ -402,6 +402,11 @@ public class FragmentOverlay extends Fragment
         mMarkers = cursorToList(cursor);
     }
 
+    /**
+     * Forms data from cursor for the needs of LocationMarker list
+     * @param cursor takes a cursor
+     * @return LocationMarker list
+     */
     private ArrayList<LocationMarker> cursorToList(Cursor cursor) {
         ArrayList<LocationMarker> markers = new ArrayList<>();
         Log.i(LOG_TAG, "Cursor entries count = " + cursor.getCount());

@@ -407,7 +407,7 @@ public class FragmentMain extends Fragment implements SensorEventListener {
         public OverlayView(Context context, Bitmap bitmap) {
             super(context);
 
-            mBitmapSize = (int) getResources().getDimension(R.dimen.image_height_width);
+            mBitmapSize = (int) getResources().getDimension(R.dimen.marker_size);
             this.mBitmap = Bitmap.createScaledBitmap(bitmap,
                     mBitmapSize,
                     mBitmapSize,

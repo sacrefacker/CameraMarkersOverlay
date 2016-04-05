@@ -9,7 +9,6 @@ import android.graphics.PorterDuff;
 import android.location.Location;
 import android.os.Bundle;
 import android.view.MotionEvent;
-import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 
@@ -183,7 +182,7 @@ class ViewOverlay extends SurfaceView implements SurfaceHolder.Callback, Observa
     }
 
     private int getBitmapSizeOnDistance(float distanceTo) {
-        double size = (double) getResources().getDimension(R.dimen.image_height_width);
+        double size = (double) getResources().getDimension(R.dimen.marker_size);
         size = size / Math.log10((double) distanceTo);
         return (int) size;
     }

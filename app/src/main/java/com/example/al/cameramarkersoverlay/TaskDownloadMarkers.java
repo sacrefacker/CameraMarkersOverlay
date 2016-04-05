@@ -25,9 +25,6 @@ import java.util.Vector;
 public class TaskDownloadMarkers extends AsyncTask<String, Void, Void> {
     private static final String LOG_TAG = TaskDownloadMarkers.class.getSimpleName();
 
-    private static final int QUANTITY = 10;
-    private static final String CHANNEL = "55dc620fbe9b3bf61be83f93";
-
     private Context mContext;
 
     public TaskDownloadMarkers(Context context) {
@@ -46,13 +43,10 @@ public class TaskDownloadMarkers extends AsyncTask<String, Void, Void> {
         String jsonStr = null;
 
         try {
-            final String BASE_URL = "http://demo.geo2tag.org/instance/service/testservice/point?";
-            final String NUMBER_PARAM = "number";
-            final String CHANNEL_IDS_PARAM = "channel_ids";
 
-            Uri builtUri = Uri.parse(BASE_URL).buildUpon()
-                    .appendQueryParameter(NUMBER_PARAM, String.valueOf(QUANTITY))
-                    .appendQueryParameter(CHANNEL_IDS_PARAM, CHANNEL)
+            Uri builtUri = Uri.parse(Utility.BASE_URL).buildUpon()
+                    .appendQueryParameter(Utility.NUMBER_PARAM, String.valueOf(Utility.QUANTITY))
+                    .appendQueryParameter(Utility.CHANNEL_IDS_PARAM, Utility.CHANNEL)
                     .build();
 
             URL url = new URL(builtUri.toString());
