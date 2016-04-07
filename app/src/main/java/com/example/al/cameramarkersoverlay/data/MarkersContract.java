@@ -24,6 +24,28 @@ public class MarkersContract {
     // At least, let's hope not.  Don't be that dev, reader.  Don't be that dev.
     public static final String PATH_MARKERS = "markers";
 
+    public static final String PATH_CHANNELS = "channels";
+
+    public static final class ChannelEntry implements BaseColumns {
+
+        public static final Uri CONTENT_URI = BASE_CONTENT_URI.buildUpon().appendPath(PATH_CHANNELS).build();
+
+        public static final String CONTENT_DIR_TYPE =
+                ContentResolver.CURSOR_DIR_BASE_TYPE + "/" + CONTENT_AUTHORITY + "/" + PATH_CHANNELS;
+
+        public static final String CONTENT_ITEM_TYPE =
+                ContentResolver.CURSOR_ITEM_BASE_TYPE + "/" + CONTENT_AUTHORITY + "/" + PATH_CHANNELS;
+
+        public static Uri buildAllChannels() {
+            return CONTENT_URI;
+        }
+
+        public static final String TABLE_NAME = "channels";
+
+        public static final String COLUMN_NAME = "name";
+        public static final String COLUMN_ID = "server_id";
+    }
+
     public static final class MarkersEntry implements BaseColumns {
 
         public static final Uri CONTENT_URI = BASE_CONTENT_URI.buildUpon().appendPath(PATH_MARKERS).build();

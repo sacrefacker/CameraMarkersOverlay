@@ -40,16 +40,6 @@ public class FragmentMenu extends Fragment {
 
         ImageView buttonOverlay = (ImageView) rootView.findViewById(R.id.main_menu_overlay_button);
         buttonOverlay.setImageBitmap(sampledBitmap(res, R.drawable.earth_icon, iconSize, iconSize));
-
-        ImageView buttonFilters = (ImageView) rootView.findViewById(R.id.main_menu_filters_button);
-        buttonFilters.setImageBitmap(sampledBitmap(res, R.drawable.checklist_icon, iconSize, iconSize));
-
-        ImageView buttonSearch = (ImageView) rootView.findViewById(R.id.main_menu_find_button);
-        buttonSearch.setImageBitmap(sampledBitmap(res, R.drawable.binoculars_icon, iconSize, iconSize));
-
-        ImageView buttonSettings = (ImageView) rootView.findViewById(R.id.main_menu_settings_button);
-        buttonSettings.setImageBitmap(sampledBitmap(res, R.drawable.settings_icon, iconSize, iconSize));
-
         buttonOverlay.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -57,7 +47,28 @@ public class FragmentMenu extends Fragment {
             }
         });
 
+        ImageView buttonFilters = (ImageView) rootView.findViewById(R.id.main_menu_filters_button);
+        buttonFilters.setImageBitmap(sampledBitmap(res, R.drawable.checklist_icon, iconSize, iconSize));
+        buttonFilters.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                openFilters();
+            }
+        });
+
+        ImageView buttonSearch = (ImageView) rootView.findViewById(R.id.main_menu_find_button);
+        buttonSearch.setImageBitmap(sampledBitmap(res, R.drawable.binoculars_icon, iconSize, iconSize));
+
+        ImageView buttonSettings = (ImageView) rootView.findViewById(R.id.main_menu_settings_button);
+        buttonSettings.setImageBitmap(sampledBitmap(res, R.drawable.settings_icon, iconSize, iconSize));
+
+
         return rootView;
+    }
+
+    private void openFilters() {
+        Intent intent = new Intent(mContext, ActivityFilters.class);
+        startActivity(intent);
     }
 
     private void openOverlay() {

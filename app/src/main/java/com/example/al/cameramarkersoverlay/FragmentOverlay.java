@@ -63,12 +63,13 @@ public class FragmentOverlay extends Fragment
 
     // выбираем колонки таблицы для извлечения курсором из БД
     private static final String[] MARKERS_COLUMNS = {
+            MarkersContract.MarkersEntry.TABLE_NAME + "." + MarkersContract.MarkersEntry._ID,
             MarkersContract.MarkersEntry.COLUMN_LAT,
             MarkersContract.MarkersEntry.COLUMN_LONG
     };
     // для получения значений из курсора
-    private static final int CURSOR_COLUMN_LAT = 0;
-    private static final int CURSOR_COLUMN_LONG = 1;
+    private static final int CURSOR_COLUMN_LAT = 1;
+    private static final int CURSOR_COLUMN_LONG = 2;
 
     private Context mContext;
 

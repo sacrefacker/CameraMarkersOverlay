@@ -6,9 +6,9 @@ import android.net.Uri;
 import android.os.AsyncTask;
 import android.util.Log;
 
+import com.example.al.cameramarkersoverlay.data.JsonHelper;
 import com.example.al.cameramarkersoverlay.data.MarkersContract;
 import com.example.al.cameramarkersoverlay.data.MarkersContract.MarkersEntry;
-import com.example.al.cameramarkersoverlay.temp.DummyDownload;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -20,6 +20,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.Set;
 import java.util.Vector;
 
 public class TaskDownloadMarkers extends AsyncTask<String, Void, Void> {
@@ -39,46 +40,49 @@ public class TaskDownloadMarkers extends AsyncTask<String, Void, Void> {
         HttpURLConnection urlConnection = null;
         BufferedReader reader = null;
 
-        // Will contain the raw JSON response as a string.
-        String jsonStr = null;
-
         try {
 
-            Uri builtUri = Uri.parse(Utility.BASE_URL).buildUpon()
-                    .appendQueryParameter(Utility.NUMBER_PARAM, String.valueOf(Utility.QUANTITY))
-                    .appendQueryParameter(Utility.CHANNEL_IDS_PARAM, Utility.CHANNEL)
-                    .build();
+            StringBuilder buffer = new StringBuilder();
+            Set<String> channels = JsonHelper.getInstance(mContext).getChannels();
 
-            URL url = new URL(builtUri.toString());
+            for (String channel : channels) {
 
-            // Create the request, and open the connection
-            urlConnection = (HttpURLConnection) url.openConnection();
-            urlConnection.setRequestMethod("GET");
-            urlConnection.connect();
+                Uri builtUri = Uri.parse(JsonHelper.POINTS_URL).buildUpon()
+                        .appendQueryParameter(JsonHelper.NUMBER_PARAM, String.valueOf(JsonHelper.QUANTITY))
+                        .appendQueryParameter(JsonHelper.CHANNEL_IDS_PARAM, channel)
+                        .build();
 
-            // Read the input stream into a String
-            InputStream inputStream = urlConnection.getInputStream();
-            StringBuffer buffer = new StringBuffer();
-            if (inputStream == null) {
-                // Nothing to do.
-                return null;
-            }
-            reader = new BufferedReader(new InputStreamReader(inputStream));
+                URL url = new URL(builtUri.toString());
 
-            String line;
-            while ((line = reader.readLine()) != null) {
-                // Since it's JSON, adding a newline isn't necessary (it won't affect parsing)
-                // But it does make debugging a *lot* easier if you print out the completed
-                // buffer for debugging.
-                buffer.append(line + "\n");
+                // Create the request, and open the connection
+                urlConnection = (HttpURLConnection) url.openConnection();
+                urlConnection.setRequestMethod("GET");
+                urlConnection.connect();
+
+                // Read the input stream into a String
+                InputStream inputStream = urlConnection.getInputStream();
+                if (inputStream == null) {
+                    // Nothing to do.
+                    return null;
+                }
+                reader = new BufferedReader(new InputStreamReader(inputStream));
+
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    // Since it's JSON, adding a newline isn't necessary (it won't affect parsing)
+                    // But it does make debugging a *lot* easier if you print out the completed
+                    // buffer for debugging.
+                    buffer.append(line);
+                    buffer.append("\n");
+                }
             }
 
             if (buffer.length() == 0) {
                 // Stream was empty.  No point in parsing.
                 return null;
             }
-            jsonStr = buffer.toString();
-            getDataFromJson(jsonStr);
+            String jsonStr = buffer.toString();
+            getMarkersFromJson(jsonStr);
 
         } catch (IOException ex) {
             Log.e(LOG_TAG, "Error ", ex);
@@ -98,10 +102,12 @@ public class TaskDownloadMarkers extends AsyncTask<String, Void, Void> {
                 }
             }
         }
+
+
         return null;
     }
 
-    private void getDataFromJson(String jsonStr) throws JSONException {
+    private void getMarkersFromJson(String jsonStr) throws JSONException {
 //        mContentVector = new DummyDownload().download();
 
         // Location information

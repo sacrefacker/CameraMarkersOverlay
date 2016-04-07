@@ -1,13 +1,10 @@
 package com.example.al.cameramarkersoverlay;
 
+import android.content.Context;
+import android.content.SharedPreferences;
+import android.preference.PreferenceManager;
+
 public class Utility {
-
-    public static final String BASE_URL = "http://demo.geo2tag.org/instance/service/testservice/point?";
-    public static final String NUMBER_PARAM = "number";
-    public static final String CHANNEL_IDS_PARAM = "channel_ids";
-    public static final int QUANTITY = 10;
-    public static final String CHANNEL = "55dc620fbe9b3bf61be83f93";
-
     // коэффициент для фильтра
     private static final float LOW_PASS_PERCENT = 0.85f;
 

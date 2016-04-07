@@ -10,22 +10,29 @@ import android.net.Uri;
 
 public class MarkersProvider extends ContentProvider {
     static final int ALL_MARKERS = 100;
+    static final int ALL_CHANNELS = 200;
 
-    private static final SQLiteQueryBuilder sQueryBuilder;
+    private static final SQLiteQueryBuilder sChannelsQueryBuilder;
+    private static final SQLiteQueryBuilder sMarkersQueryBuilder;
     private static final UriMatcher sUriMatcher = buildUriMatcher();
 
     static {
-        sQueryBuilder = new SQLiteQueryBuilder();
-        sQueryBuilder.setTables(MarkersContract.MarkersEntry.TABLE_NAME);
+        sChannelsQueryBuilder = new SQLiteQueryBuilder();
+        sChannelsQueryBuilder.setTables(MarkersContract.ChannelEntry.TABLE_NAME);
+    }
+
+    static {
+        sMarkersQueryBuilder = new SQLiteQueryBuilder();
+        sMarkersQueryBuilder.setTables(MarkersContract.MarkersEntry.TABLE_NAME);
     }
 
     static UriMatcher buildUriMatcher() {
         // 1) The code passed into the constructor represents the code to return for the root URI
         final UriMatcher uriMatcher = new UriMatcher(UriMatcher.NO_MATCH);
         final String authority = MarkersContract.CONTENT_AUTHORITY;
-        final String markers = MarkersContract.PATH_MARKERS;
         // 2) Use the addURI function to match each of the types.
-        uriMatcher.addURI(authority, markers, ALL_MARKERS);
+        uriMatcher.addURI(authority, MarkersContract.PATH_CHANNELS, ALL_CHANNELS);
+        uriMatcher.addURI(authority, MarkersContract.PATH_MARKERS, ALL_MARKERS);
         // 3) Return the new matcher!
         return uriMatcher;
     }
@@ -40,10 +47,10 @@ public class MarkersProvider extends ContentProvider {
 
     @Override
     public String getType(Uri uri) {
-        // Use the Uri Matcher to determine what kind of URI this is.
         final int match = sUriMatcher.match(uri);
         switch (match) {
-            // Student: Uncomment and fill out these two cases
+            case ALL_CHANNELS:
+                return MarkersContract.ChannelEntry.CONTENT_DIR_TYPE;
             case ALL_MARKERS:
                 return MarkersContract.MarkersEntry.CONTENT_DIR_TYPE;
             default:
@@ -57,6 +64,10 @@ public class MarkersProvider extends ContentProvider {
         // and query the database accordingly.
         Cursor retCursor;
         switch (sUriMatcher.match(uri)) {
+            case ALL_CHANNELS: {
+                retCursor = getAllChannels(uri, projection, sortOrder);
+                break;
+            }
             case ALL_MARKERS: {
                 retCursor = getAllMarkers(uri, projection, sortOrder);
                 break;
@@ -68,8 +79,20 @@ public class MarkersProvider extends ContentProvider {
         return retCursor;
     }
 
+    private Cursor getAllChannels(Uri uri, String[] projection, String sortOrder) {
+        return sChannelsQueryBuilder.query(
+                mHelper.getReadableDatabase(), // выбор БД
+                projection, // список колонок для возврата
+                null, // условия
+                null, // аргументы для условий (подстановка в "?")
+                null, // группировка
+                null, // условие для включения группы в результат
+                sortOrder // сортировка
+        );
+    }
+
     private Cursor getAllMarkers(Uri uri, String[] projection, String sortOrder) {
-        return sQueryBuilder.query(
+        return sMarkersQueryBuilder.query(
                 mHelper.getReadableDatabase(), // выбор БД
                 projection, // список колонок для возврата
                 null, // условия
@@ -82,28 +105,38 @@ public class MarkersProvider extends ContentProvider {
 
     @Override
     public int bulkInsert(Uri uri, ContentValues[] values) {
-        final SQLiteDatabase db = mHelper.getWritableDatabase();
         final int match = sUriMatcher.match(uri);
+        int returnCount;
         switch (match) {
+            case ALL_CHANNELS:
+                returnCount = bulkInsertHelper(uri, values, MarkersContract.ChannelEntry.TABLE_NAME);
+                break;
             case ALL_MARKERS:
-                db.beginTransaction();
-                int returnCount = 0;
-                try {
-                    for (ContentValues value : values) {
-                        long _id = db.insert(MarkersContract.MarkersEntry.TABLE_NAME, null, value);
-                        if (_id != -1) {
-                            returnCount++;
-                        }
-                    }
-                    db.setTransactionSuccessful();
-                } finally {
-                    db.endTransaction();
-                }
-                getContext().getContentResolver().notifyChange(uri, null);
-                return returnCount;
+                returnCount = bulkInsertHelper(uri, values, MarkersContract.MarkersEntry.TABLE_NAME);
+                break;
             default:
                 return super.bulkInsert(uri, values);
         }
+        return returnCount;
+    }
+
+    private int bulkInsertHelper(Uri uri, ContentValues[] values, String tableName) {
+        final SQLiteDatabase db = mHelper.getWritableDatabase();
+        db.beginTransaction();
+        int returnCount = 0;
+        try {
+            for (ContentValues value : values) {
+                long _id = db.insert(tableName, null, value);
+                if (_id != -1) {
+                    returnCount++;
+                }
+            }
+            db.setTransactionSuccessful();
+        } finally {
+            db.endTransaction();
+        }
+        getContext().getContentResolver().notifyChange(uri, null);
+        return returnCount;
     }
 
     // Пока не применяются

@@ -38,5 +38,7 @@
     <string name="main_menu_filters_desc">Change filters</string>
     <string name="main_menu_find_desc">Find a place</string>
     <string name="main_menu_settings_desc">Settings</string>
+    <string name="title_activity_activity_filters">ActivityFilters</string>
+    <string name="action_refresh">Refresh</string>
 
 </resources>

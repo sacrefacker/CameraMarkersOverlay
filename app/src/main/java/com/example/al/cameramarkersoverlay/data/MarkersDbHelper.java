@@ -5,11 +5,12 @@ import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 
 import com.example.al.cameramarkersoverlay.data.MarkersContract.MarkersEntry;
+import com.example.al.cameramarkersoverlay.data.MarkersContract.ChannelEntry;
 
 public class MarkersDbHelper extends SQLiteOpenHelper {
 
     // If you change the database schema, you must increment the database version.
-    private static final int DATABASE_VERSION = 3;
+    private static final int DATABASE_VERSION = 5;
 
     static final String DATABASE_NAME = "markers.db";
 
@@ -19,6 +20,17 @@ public class MarkersDbHelper extends SQLiteOpenHelper {
 
     @Override
     public void onCreate(SQLiteDatabase sqLiteDatabase) {
+
+        final String SQL_CREATE_CHANNELS_TABLE = "CREATE TABLE " + ChannelEntry.TABLE_NAME + " (" +
+                ChannelEntry._ID + " INTEGER PRIMARY KEY AUTOINCREMENT," +
+
+                ChannelEntry.COLUMN_NAME + " TEXT NOT NULL, " +
+                ChannelEntry.COLUMN_ID + " TEXT NOT NULL," +
+
+                " UNIQUE (" + ChannelEntry.COLUMN_ID + ") ON CONFLICT REPLACE);";
+
+        sqLiteDatabase.execSQL(SQL_CREATE_CHANNELS_TABLE);
+
         final String SQL_CREATE_MARKERS_TABLE = "CREATE TABLE " + MarkersEntry.TABLE_NAME + " (" +
 
                 // Why AutoIncrement here, and not above?
@@ -28,8 +40,6 @@ public class MarkersDbHelper extends SQLiteOpenHelper {
                 // should be sorted accordingly.
                 MarkersEntry._ID + " INTEGER PRIMARY KEY AUTOINCREMENT," +
 
-                // Может потребоваться not null
-
                 MarkersEntry.COLUMN_NAME + " TEXT," +
                 MarkersEntry.COLUMN_LAT + " REAL NOT NULL, " +
                 MarkersEntry.COLUMN_LONG + " REAL NOT NULL, " +
@@ -38,7 +48,7 @@ public class MarkersDbHelper extends SQLiteOpenHelper {
                 MarkersEntry.COLUMN_DATE + " INTEGER, " +
                 MarkersEntry.COLUMN_BC + " TEXT, " +
                 MarkersEntry.COLUMN_CHANNEL + " INTEGER, " +
-                MarkersEntry.COLUMN_ID + " INTEGER, " +
+                MarkersEntry.COLUMN_ID + " TEXT, " +
 
                 // From intuition the coordinates should be unique
                 " UNIQUE (" + MarkersEntry.COLUMN_LAT + ", " +
@@ -55,6 +65,7 @@ public class MarkersDbHelper extends SQLiteOpenHelper {
         // It does NOT depend on the version number for your application.
         // If you want to update the schema without wiping data, commenting out the next 2 lines
         // should be your top priority before modifying this method.
+        sqLiteDatabase.execSQL("DROP TABLE IF EXISTS " + ChannelEntry.TABLE_NAME);
         sqLiteDatabase.execSQL("DROP TABLE IF EXISTS " + MarkersEntry.TABLE_NAME);
         onCreate(sqLiteDatabase);
     }
