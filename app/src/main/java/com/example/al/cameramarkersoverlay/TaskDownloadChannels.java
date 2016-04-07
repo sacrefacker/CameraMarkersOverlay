@@ -7,7 +7,7 @@ import android.net.Uri;
 import android.os.AsyncTask;
 import android.util.Log;
 
-import com.example.al.cameramarkersoverlay.data.JsonHelper;
+import com.example.al.cameramarkersoverlay.data.JHelper;
 import com.example.al.cameramarkersoverlay.data.MarkersContract;
 
 import org.json.JSONArray;
@@ -43,8 +43,8 @@ public class TaskDownloadChannels extends AsyncTask<String, Void, Void> {
 
             StringBuilder buffer = new StringBuilder();
 
-            Uri builtUri = Uri.parse(JsonHelper.CHANNELS_URL).buildUpon()
-                    .appendQueryParameter(JsonHelper.NUMBER_PARAM, String.valueOf(JsonHelper.QUANTITY))
+            Uri builtUri = Uri.parse(JHelper.CHANNELS_URL).buildUpon()
+                    .appendQueryParameter(JHelper.NUMBER_PARAM, String.valueOf(JHelper.QUANTITY))
                     .build();
 
             URL url = new URL(builtUri.toString());

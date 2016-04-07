@@ -6,7 +6,7 @@ import android.net.Uri;
 import android.os.AsyncTask;
 import android.util.Log;
 
-import com.example.al.cameramarkersoverlay.data.JsonHelper;
+import com.example.al.cameramarkersoverlay.data.JHelper;
 import com.example.al.cameramarkersoverlay.data.MarkersContract;
 import com.example.al.cameramarkersoverlay.data.MarkersContract.MarkersEntry;
 
@@ -43,13 +43,13 @@ public class TaskDownloadMarkers extends AsyncTask<String, Void, Void> {
         try {
 
             StringBuilder buffer = new StringBuilder();
-            Set<String> channels = JsonHelper.getInstance(mContext).getChannels();
+            Set<String> channels = JHelper.getInstance(mContext).getChannels();
 
             for (String channel : channels) {
 
-                Uri builtUri = Uri.parse(JsonHelper.POINTS_URL).buildUpon()
-                        .appendQueryParameter(JsonHelper.NUMBER_PARAM, String.valueOf(JsonHelper.QUANTITY))
-                        .appendQueryParameter(JsonHelper.CHANNEL_IDS_PARAM, channel)
+                Uri builtUri = Uri.parse(JHelper.POINTS_URL).buildUpon()
+                        .appendQueryParameter(JHelper.NUMBER_PARAM, String.valueOf(JHelper.QUANTITY))
+                        .appendQueryParameter(JHelper.CHANNEL_IDS_PARAM, channel)
                         .build();
 
                 URL url = new URL(builtUri.toString());

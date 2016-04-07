@@ -17,7 +17,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ListView;
 
-import com.example.al.cameramarkersoverlay.data.JsonHelper;
+import com.example.al.cameramarkersoverlay.data.JHelper;
 import com.example.al.cameramarkersoverlay.data.MarkersContract;
 import com.example.al.cameramarkersoverlay.data.MarkersContract.ChannelEntry;
 
@@ -94,7 +94,7 @@ public class FragmentFilters extends Fragment implements LoaderManager.LoaderCal
 
     @Override
     public void onPause() {
-        JsonHelper.getInstance(mContext).saveChanges();
+        JHelper.getInstance(mContext).saveChanges();
         super.onPause();
     }
 

@@ -2,7 +2,6 @@ package com.example.al.cameramarkersoverlay;
 
 import android.content.Context;
 import android.database.Cursor;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -11,9 +10,7 @@ import android.support.v4.widget.CursorAdapter;
 import android.widget.CompoundButton;
 import android.widget.TextView;
 
-import com.example.al.cameramarkersoverlay.data.JsonHelper;
-
-import java.security.acl.LastOwnerException;
+import com.example.al.cameramarkersoverlay.data.JHelper;
 
 public class AdapterFiltersList extends CursorAdapter{
     private static final String LOG_TAG = AdapterFiltersList.class.getSimpleName();
@@ -47,12 +44,12 @@ public class AdapterFiltersList extends CursorAdapter{
         final ViewHolder viewHolder = (ViewHolder) view.getTag();
 
         final String channelId = cursor.getString(FragmentFilters.CURSOR_COLUMN_ID);
-        viewHolder.checkBox.setChecked(JsonHelper.getInstance(context).isChannelChecked(channelId));
+        viewHolder.checkBox.setChecked(JHelper.getInstance(context).isChannelChecked(channelId));
         viewHolder.checkBox.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                 boolean currentState = viewHolder.checkBox.isChecked();
-                JsonHelper.getInstance(context).checkChannel(channelId, currentState);
+                JHelper.getInstance(context).checkChannel(channelId, currentState);
             }
         });
 
