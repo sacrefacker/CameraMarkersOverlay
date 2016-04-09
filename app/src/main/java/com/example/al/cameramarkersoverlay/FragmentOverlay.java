@@ -192,7 +192,7 @@ public class FragmentOverlay extends Fragment
     }
 
     private void downloadMarkers() {
-        new TaskDownloadMarkers(getContext()).execute();
+        new TaskDownloadData(getContext(), TaskDownloadData.DOWNLOAD_MARKERS).execute();
     }
 
     @Override

@@ -1,7 +1,6 @@
-package com.example.al.cameramarkersoverlay;
+package com.example.al.cameramarkersoverlay.unused;
 
 
-import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
 import android.net.Uri;

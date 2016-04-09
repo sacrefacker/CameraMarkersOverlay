@@ -73,7 +73,7 @@ public class FragmentFilters extends Fragment
     }
 
     private void downloadChannels() {
-        new TaskDownloadChannels(mContext).execute();
+        new TaskDownloadData(mContext, TaskDownloadData.DOWNLOAD_CHANNELS).execute();
         mDownloadCount++;
     }
 
