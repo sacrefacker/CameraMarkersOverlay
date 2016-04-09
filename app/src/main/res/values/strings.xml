@@ -40,5 +40,6 @@
     <string name="main_menu_settings_desc">Settings</string>
     <string name="title_activity_activity_filters">ActivityFilters</string>
     <string name="action_refresh">Refresh</string>
+    <string name="action_reset">Reset changes</string>
 
 </resources>

@@ -35,6 +35,7 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import com.example.al.cameramarkersoverlay.data.ChannelsContainer;
 import com.example.al.cameramarkersoverlay.data.LocationMarker;
 import com.example.al.cameramarkersoverlay.data.MarkersContract;
 
@@ -142,8 +143,10 @@ public class FragmentOverlay extends Fragment
         super.onCreate(savedInstanceState);
         mContext = getActivity();
 
-        // TODO: comment this line to debug downloading
-        downloadMarkers();
+        if (ChannelsContainer.getInstance(mContext).hasChanges()) {
+            downloadMarkers();
+            ChannelsContainer.getInstance(mContext).clearChangesFlag();
+        }
 
         mLocationManager = (LocationManager) mContext.getSystemService(Context.LOCATION_SERVICE);
         if (mLocationManager == null) {

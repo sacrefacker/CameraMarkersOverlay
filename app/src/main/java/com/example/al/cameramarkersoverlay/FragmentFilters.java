@@ -21,7 +21,8 @@ import com.example.al.cameramarkersoverlay.data.ChannelsContainer;
 import com.example.al.cameramarkersoverlay.data.MarkersContract;
 import com.example.al.cameramarkersoverlay.data.MarkersContract.ChannelEntry;
 
-public class FragmentFilters extends Fragment implements LoaderManager.LoaderCallbacks<Cursor> {
+public class FragmentFilters extends Fragment
+        implements LoaderManager.LoaderCallbacks<Cursor>, InterfaceRefreshList {
     private static final String LOG_TAG = FragmentFilters.class.getSimpleName();
     private static final int CHANNELS_LOADER = 1;
 
@@ -39,6 +40,8 @@ public class FragmentFilters extends Fragment implements LoaderManager.LoaderCal
 
     private AdapterFiltersList mAdapterFiltersList;
 
+    private int mDownloadCount = 0;
+
     public FragmentFilters() {
     }
 
@@ -48,7 +51,6 @@ public class FragmentFilters extends Fragment implements LoaderManager.LoaderCal
         super.onCreate(savedInstanceState);
         mContext = getActivity();
         setHasOptionsMenu(true);
-        downloadChannels();
     }
 
     @Override
@@ -59,15 +61,30 @@ public class FragmentFilters extends Fragment implements LoaderManager.LoaderCal
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         int id = item.getItemId();
-        if (id == R.id.action_refresh) {
-            downloadChannels();
-            return true;
+        switch (id) {
+            case R.id.action_refresh:
+                downloadChannels();
+                return true;
+            case R.id.action_reset:
+                resetChanges();
+                return true;
         }
         return super.onOptionsItemSelected(item);
     }
 
     private void downloadChannels() {
         new TaskDownloadChannels(mContext).execute();
+        mDownloadCount++;
+    }
+
+    private void resetChanges() {
+        ChannelsContainer.getInstance(mContext).resetChanges();
+        refreshList();
+    }
+
+    @Override
+    public void refreshList() {
+        getLoaderManager().restartLoader(CHANNELS_LOADER, null, this);
     }
 
     @Override
@@ -76,7 +93,7 @@ public class FragmentFilters extends Fragment implements LoaderManager.LoaderCal
 
         View rootView = inflater.inflate(R.layout.fragment_filters, container, false);
 
-        mAdapterFiltersList = new AdapterFiltersList(mContext,null,0);
+        mAdapterFiltersList = new AdapterFiltersList(mContext, null, 0, this);
 
         // Get a reference to the ListView, and attach this adapter to it.
         ListView listView = (ListView) rootView.findViewById(R.id.listview_channels);
@@ -115,7 +132,14 @@ public class FragmentFilters extends Fragment implements LoaderManager.LoaderCal
     @Override
     public void onLoadFinished(Loader<Cursor> cursorLoader, Cursor cursor) {
         Log.i(LOG_TAG, "onLoadFinished");
-        mAdapterFiltersList.swapCursor(cursor);
+        // опасно если есть шанс, что качалка не будет качать - зациклится
+        if (cursor.getCount() == 0 && mDownloadCount == 0) {
+            downloadChannels();
+            mDownloadCount++;
+        }
+        else {
+            mAdapterFiltersList.swapCursor(cursor);
+        }
     }
 
     @Override
