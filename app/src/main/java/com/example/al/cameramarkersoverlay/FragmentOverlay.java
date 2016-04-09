@@ -142,6 +142,9 @@ public class FragmentOverlay extends Fragment
         super.onCreate(savedInstanceState);
         mContext = getActivity();
 
+        // TODO: comment this line to debug downloading
+        downloadMarkers();
+
         mLocationManager = (LocationManager) mContext.getSystemService(Context.LOCATION_SERVICE);
         if (mLocationManager == null) {
             Log.e(LOG_TAG, "error getting location manager");
@@ -269,7 +272,6 @@ public class FragmentOverlay extends Fragment
             }
         }
 
-        // TODO: comment this line to debug downloading
         resumeLocation();
 
         startPreview();

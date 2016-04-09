@@ -17,7 +17,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ListView;
 
-import com.example.al.cameramarkersoverlay.data.JHelper;
+import com.example.al.cameramarkersoverlay.data.ChannelsContainer;
 import com.example.al.cameramarkersoverlay.data.MarkersContract;
 import com.example.al.cameramarkersoverlay.data.MarkersContract.ChannelEntry;
 
@@ -48,7 +48,7 @@ public class FragmentFilters extends Fragment implements LoaderManager.LoaderCal
         super.onCreate(savedInstanceState);
         mContext = getActivity();
         setHasOptionsMenu(true);
-        new TaskDownloadChannels(mContext).execute();
+        downloadChannels();
     }
 
     @Override
@@ -68,7 +68,6 @@ public class FragmentFilters extends Fragment implements LoaderManager.LoaderCal
 
     private void downloadChannels() {
         new TaskDownloadChannels(mContext).execute();
-        getLoaderManager().restartLoader(CHANNELS_LOADER, null, this);
     }
 
     @Override
@@ -94,7 +93,8 @@ public class FragmentFilters extends Fragment implements LoaderManager.LoaderCal
 
     @Override
     public void onPause() {
-        JHelper.getInstance(mContext).saveChanges();
+        Log.i(LOG_TAG, "onPause");
+        ChannelsContainer.getInstance(mContext).saveChanges();
         super.onPause();
     }
 

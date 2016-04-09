@@ -1,14 +1,14 @@
 package com.example.al.cameramarkersoverlay;
 
 
+import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.util.Log;
 
-import com.example.al.cameramarkersoverlay.data.JHelper;
-import com.example.al.cameramarkersoverlay.data.MarkersContract;
+import com.example.al.cameramarkersoverlay.data.MarkersContract.ChannelEntry;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -24,6 +24,10 @@ import java.util.Vector;
 
 public class TaskDownloadChannels extends AsyncTask<String, Void, Void> {
     private static final String LOG_TAG = TaskDownloadChannels.class.getSimpleName();
+
+    public static final String CHANNELS_URL = "http://demo.geo2tag.org/instance/service/testservice/channel?";
+    public static final String NUMBER_PARAM = "number";
+    public static final int QUANTITY = 20;
 
     private Context mContext;
 
@@ -43,8 +47,8 @@ public class TaskDownloadChannels extends AsyncTask<String, Void, Void> {
 
             StringBuilder buffer = new StringBuilder();
 
-            Uri builtUri = Uri.parse(JHelper.CHANNELS_URL).buildUpon()
-                    .appendQueryParameter(JHelper.NUMBER_PARAM, String.valueOf(JHelper.QUANTITY))
+            Uri builtUri = Uri.parse(CHANNELS_URL).buildUpon()
+                    .appendQueryParameter(NUMBER_PARAM, String.valueOf(QUANTITY))
                     .build();
 
             URL url = new URL(builtUri.toString());
@@ -71,12 +75,13 @@ public class TaskDownloadChannels extends AsyncTask<String, Void, Void> {
                 buffer.append("\n");
             }
 
-            if (buffer.length() == 0) {
-                // Stream was empty.  No point in parsing.
-                return null;
+            // перенесено из getChannelsFromJson
+            mContext.getContentResolver().delete(ChannelEntry.CONTENT_URI, null, null);
+
+            if (buffer.length() != 0) {
+                String jsonStr = buffer.toString();
+                getChannelsFromJson(jsonStr);
             }
-            String jsonStr = buffer.toString();
-            getChannelsFromJson(jsonStr);
 
         } catch (IOException ex) {
             Log.e(LOG_TAG, "Error ", ex);
@@ -121,16 +126,17 @@ public class TaskDownloadChannels extends AsyncTask<String, Void, Void> {
                 String name = channel.getString(JSON_NAME);
 
                 ContentValues values = new ContentValues();
-                values.put(MarkersContract.ChannelEntry.COLUMN_ID, id);
-                values.put(MarkersContract.ChannelEntry.COLUMN_NAME, name);
+                values.put(ChannelEntry.COLUMN_ID, id);
+                values.put(ChannelEntry.COLUMN_NAME, name);
                 cVVector.add(values);
             }
 
-            // добавляем значения в БД
+            // заменяем значения в БД
             if ( cVVector.size() > 0 ) {
+                Log.i(LOG_TAG, "Refreshing channels");
                 ContentValues cVArray[] = new ContentValues[cVVector.size()];
                 cVVector.toArray(cVArray);
-                mContext.getContentResolver().bulkInsert(MarkersContract.ChannelEntry.CONTENT_URI,cVArray);
+                mContext.getContentResolver().bulkInsert(ChannelEntry.CONTENT_URI,cVArray);
             }
 
         } catch (JSONException e) {

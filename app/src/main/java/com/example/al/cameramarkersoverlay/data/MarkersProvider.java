@@ -115,7 +115,7 @@ public class MarkersProvider extends ContentProvider {
                 returnCount = bulkInsertHelper(uri, values, MarkersContract.MarkersEntry.TABLE_NAME);
                 break;
             default:
-                return super.bulkInsert(uri, values);
+                throw new UnsupportedOperationException("Wrong URI");
         }
         return returnCount;
     }
@@ -139,17 +139,36 @@ public class MarkersProvider extends ContentProvider {
         return returnCount;
     }
 
+    @Override
+    public int delete(Uri uri, String selection, String[] selectionArgs) {
+        final int match = sUriMatcher.match(uri);
+        int returnCount;
+        switch (match) {
+            case ALL_CHANNELS:
+                returnCount = deleteAllRows(uri, MarkersContract.ChannelEntry.TABLE_NAME);
+                break;
+            case ALL_MARKERS:
+                returnCount = deleteAllRows(uri, MarkersContract.MarkersEntry.TABLE_NAME);
+                break;
+            default:
+                throw new UnsupportedOperationException("Wrong URI");
+        }
+        return returnCount;
+    }
+
+    private int deleteAllRows(Uri uri, String tableName) {
+        final SQLiteDatabase db = mHelper.getWritableDatabase();
+        // говорят, если заменить на trunсate table, будет быстрее
+        int returnCount = db.delete(tableName, null, null);
+        getContext().getContentResolver().notifyChange(uri, null);
+        return returnCount;
+    }
+
     // Пока не применяются
 
     @Override
     public Uri insert(Uri uri, ContentValues values) {
         // Implement this to handle requests to insert a new row.
-        throw new UnsupportedOperationException("Not yet implemented");
-    }
-
-    @Override
-    public int delete(Uri uri, String selection, String[] selectionArgs) {
-        // Implement this to handle requests to delete one or more rows.
         throw new UnsupportedOperationException("Not yet implemented");
     }
 

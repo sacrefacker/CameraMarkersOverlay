@@ -1,12 +1,13 @@
 package com.example.al.cameramarkersoverlay;
 
+import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.util.Log;
 
-import com.example.al.cameramarkersoverlay.data.JHelper;
+import com.example.al.cameramarkersoverlay.data.ChannelsContainer;
 import com.example.al.cameramarkersoverlay.data.MarkersContract;
 import com.example.al.cameramarkersoverlay.data.MarkersContract.MarkersEntry;
 
@@ -26,6 +27,11 @@ import java.util.Vector;
 public class TaskDownloadMarkers extends AsyncTask<String, Void, Void> {
     private static final String LOG_TAG = TaskDownloadMarkers.class.getSimpleName();
 
+    public static final String POINTS_URL = "http://demo.geo2tag.org/instance/service/testservice/point?";
+    public static final String NUMBER_PARAM = "number";
+    public static final String CHANNEL_IDS_PARAM = "channel_ids";
+    public static final int QUANTITY = 10;
+
     private Context mContext;
 
     public TaskDownloadMarkers(Context context) {
@@ -43,13 +49,14 @@ public class TaskDownloadMarkers extends AsyncTask<String, Void, Void> {
         try {
 
             StringBuilder buffer = new StringBuilder();
-            Set<String> channels = JHelper.getInstance(mContext).getChannels();
+            Set<String> channels = ChannelsContainer.getInstance(mContext).getChannels();
 
             for (String channel : channels) {
+                Log.i(LOG_TAG, "Channel " + channel + "\n");
 
-                Uri builtUri = Uri.parse(JHelper.POINTS_URL).buildUpon()
-                        .appendQueryParameter(JHelper.NUMBER_PARAM, String.valueOf(JHelper.QUANTITY))
-                        .appendQueryParameter(JHelper.CHANNEL_IDS_PARAM, channel)
+                Uri builtUri = Uri.parse(POINTS_URL).buildUpon()
+                        .appendQueryParameter(NUMBER_PARAM, String.valueOf(QUANTITY))
+                        .appendQueryParameter(CHANNEL_IDS_PARAM, channel)
                         .build();
 
                 URL url = new URL(builtUri.toString());
@@ -77,12 +84,14 @@ public class TaskDownloadMarkers extends AsyncTask<String, Void, Void> {
                 }
             }
 
-            if (buffer.length() == 0) {
-                // Stream was empty.  No point in parsing.
-                return null;
+            // перенесено из getMarkersFromJson
+            mContext.getContentResolver().delete(MarkersEntry.CONTENT_URI, null, null);
+
+            if (buffer.length() != 0) {
+                String jsonStr = buffer.toString();
+                Log.i(LOG_TAG, jsonStr);
+                getMarkersFromJson(jsonStr);
             }
-            String jsonStr = buffer.toString();
-            getMarkersFromJson(jsonStr);
 
         } catch (IOException ex) {
             Log.e(LOG_TAG, "Error ", ex);
@@ -102,7 +111,6 @@ public class TaskDownloadMarkers extends AsyncTask<String, Void, Void> {
                 }
             }
         }
-
 
         return null;
     }
@@ -138,6 +146,7 @@ public class TaskDownloadMarkers extends AsyncTask<String, Void, Void> {
 
             // добавляем значения в БД
             if ( cVVector.size() > 0 ) {
+                Log.i(LOG_TAG, "Refreshing markers");
                 ContentValues cVArray[] = new ContentValues[cVVector.size()];
                 cVVector.toArray(cVArray);
                 mContext.getContentResolver().bulkInsert(MarkersEntry.CONTENT_URI,cVArray);

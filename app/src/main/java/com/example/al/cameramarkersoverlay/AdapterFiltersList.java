@@ -2,6 +2,7 @@ package com.example.al.cameramarkersoverlay;
 
 import android.content.Context;
 import android.database.Cursor;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -10,7 +11,7 @@ import android.support.v4.widget.CursorAdapter;
 import android.widget.CompoundButton;
 import android.widget.TextView;
 
-import com.example.al.cameramarkersoverlay.data.JHelper;
+import com.example.al.cameramarkersoverlay.data.ChannelsContainer;
 
 public class AdapterFiltersList extends CursorAdapter{
     private static final String LOG_TAG = AdapterFiltersList.class.getSimpleName();
@@ -27,6 +28,7 @@ public class AdapterFiltersList extends CursorAdapter{
      */
     @Override
     public View newView(Context context, Cursor cursor, ViewGroup parent) {
+        Log.i(LOG_TAG, "newView");
         View view = LayoutInflater.from(context).inflate(R.layout.list_item_filters, parent, false);
         ViewHolder viewHolder = new ViewHolder(view);
         view.setTag(viewHolder);
@@ -38,18 +40,20 @@ public class AdapterFiltersList extends CursorAdapter{
      */
     @Override
     public void bindView(View view, final Context context, Cursor cursor) {
-        // our view is pretty simple here --- just a text view
-        // we'll keep the UI functional with a simple (and slow!) binding.
+        Log.i(LOG_TAG, "bindView");
 
         final ViewHolder viewHolder = (ViewHolder) view.getTag();
 
         final String channelId = cursor.getString(FragmentFilters.CURSOR_COLUMN_ID);
-        viewHolder.checkBox.setChecked(JHelper.getInstance(context).isChannelChecked(channelId));
+        viewHolder.checkBox.setChecked(ChannelsContainer.getInstance(context).isChannelChecked(channelId));
         viewHolder.checkBox.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                boolean currentState = viewHolder.checkBox.isChecked();
-                JHelper.getInstance(context).checkChannel(channelId, currentState);
+                // потому что onCheckedChanged срабатывает, когда скроллишь список
+                if (buttonView.isPressed()) {
+                    Log.i(LOG_TAG, "checked" + isChecked);
+                    ChannelsContainer.getInstance(context).checkChannel(channelId, isChecked);
+                }
             }
         });
 
