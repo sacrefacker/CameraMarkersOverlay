@@ -67,6 +67,7 @@ public class MarkersContract {
         public static final String COLUMN_LAT = "coordinate0";
         public static final String COLUMN_LONG = "coordinate1";
         public static final String COLUMN_ALT = "alt";
+        public static final String COLUMN_TYPE = "type";
         public static final String COLUMN_IMAGE = "image_url";
         public static final String COLUMN_DATE = "date";
         public static final String COLUMN_BC = "bc";

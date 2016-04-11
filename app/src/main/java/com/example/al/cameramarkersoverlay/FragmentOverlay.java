@@ -143,11 +143,6 @@ public class FragmentOverlay extends Fragment
         super.onCreate(savedInstanceState);
         mContext = getActivity();
 
-        if (ChannelsContainer.getInstance(mContext).hasChanges()) {
-            downloadMarkers();
-            ChannelsContainer.getInstance(mContext).clearChangesFlag();
-        }
-
         mLocationManager = (LocationManager) mContext.getSystemService(Context.LOCATION_SERVICE);
         if (mLocationManager == null) {
             Log.e(LOG_TAG, "error getting location manager");
@@ -192,7 +187,10 @@ public class FragmentOverlay extends Fragment
     }
 
     private void downloadMarkers() {
-        new TaskDownloadData(getContext(), TaskDownloadData.DOWNLOAD_MARKERS).execute();
+        String lat = String.valueOf (mLocation.getLatitude());
+        String lon = String.valueOf (mLocation.getLongitude());
+        new TaskDownloadData(getContext(), TaskDownloadData.DOWNLOAD_MARKERS).execute(lat, lon);
+        ChannelsContainer.getInstance(mContext).clearChangesFlag();
     }
 
     @Override
@@ -213,7 +211,6 @@ public class FragmentOverlay extends Fragment
         // ViewOverlay для отображения маркеров поверх видео (унаследован от SurfaceView)
         mOverlaySurface = new ViewOverlay(
                 mContext,
-                BitmapFactory.decodeResource(getResources(), android.R.drawable.ic_delete),
                 this,
                 getFragmentManager()
         );
@@ -276,6 +273,10 @@ public class FragmentOverlay extends Fragment
         }
 
         resumeLocation();
+
+        if (ChannelsContainer.getInstance(mContext).hasChanges() && mLocation != null) {
+            downloadMarkers();
+        }
 
         startPreview();
         mOverlaySurface.setVisibility(View.VISIBLE);

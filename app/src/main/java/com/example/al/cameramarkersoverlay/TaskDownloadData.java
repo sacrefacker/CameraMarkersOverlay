@@ -21,6 +21,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.Locale;
 import java.util.Set;
 import java.util.Vector;
 
@@ -33,8 +34,12 @@ public class TaskDownloadData extends AsyncTask<String, Void, Void> {
     public static final String CHANNELS_URL = "http://demo.geo2tag.org/instance/service/testservice/channel?";
     public static final String POINTS_URL = "http://demo.geo2tag.org/instance/service/testservice/point?";
     public static final String NUMBER_PARAM = "number";
-    public static final String CHANNEL_IDS_PARAM = "channel_ids";
     public static final int QUANTITY = 10;
+    public static final String CHANNEL_IDS_PARAM = "channel_ids";
+    public static final String GEOMETRY_PARAM = "geometry";
+    public static final String RADIUS_PARAM = "radius";
+    // TODO: поменять после появления возможности добавлять свои точки
+    public static final int RADIUS = 10000;
 
     private Context mContext;
 
@@ -47,15 +52,16 @@ public class TaskDownloadData extends AsyncTask<String, Void, Void> {
 
     @Override
     protected Void doInBackground(String... params) {
-        Uri builtUri;
+        String query;
         StringBuilder buffer = new StringBuilder();
 
         switch (mDownloadMode) {
             case DOWNLOAD_CHANNELS:
-                builtUri = Uri.parse(CHANNELS_URL).buildUpon()
+                query = Uri.parse(CHANNELS_URL).buildUpon()
                         .appendQueryParameter(NUMBER_PARAM, String.valueOf(QUANTITY))
-                        .build();
-                buffer.append(fetchData(builtUri));
+                        .build()
+                        .toString();
+                buffer.append(fetchData(query));
                 // перенесено из getChannelsFromJson - удаляем раньше времени?
                 mContext.getContentResolver().delete(ChannelEntry.CONTENT_URI, null, null);
                 break;
@@ -63,11 +69,22 @@ public class TaskDownloadData extends AsyncTask<String, Void, Void> {
                 Set<String> channels = ChannelsContainer.getInstance(mContext).getChannels();
                 for (String channel : channels) {
                     Log.i(LOG_TAG, "Channel " + channel + "\n");
-                    builtUri = Uri.parse(POINTS_URL).buildUpon()
+                    float lat = Float.valueOf(params[0]);
+                    float lon = Float.valueOf(params[1]);
+
+                    // решить, как лучше формировать строку
+//                    String geom = String.format(Locale.ENGLISH, mContext.getString(R.string.format_geometry), lat, lon);
+                    String geom = "{\"type\":\"Point\",\"coordinates\":[" + lat + "," + lon + "]}";
+                    Log.i(LOG_TAG, geom);
+                    query = Uri.parse(POINTS_URL).buildUpon()
                             .appendQueryParameter(NUMBER_PARAM, String.valueOf(QUANTITY))
                             .appendQueryParameter(CHANNEL_IDS_PARAM, channel)
-                            .build();
-                    buffer.append(fetchData(builtUri));
+                            .appendQueryParameter(RADIUS_PARAM, String.valueOf(RADIUS))
+                            .build()
+                            .toString()
+                            .concat("&" + GEOMETRY_PARAM + "=")
+                            .concat(geom);
+                    buffer.append(fetchData(query));
                     // перенесено из getMarkersFromJson - удаляем раньше времени?
                     mContext.getContentResolver().delete(MarkersEntry.CONTENT_URI, null, null);
                 }
@@ -101,7 +118,7 @@ public class TaskDownloadData extends AsyncTask<String, Void, Void> {
         return null;
     }
 
-    private StringBuilder fetchData(Uri builtUri) {
+    private StringBuilder fetchData(String query) {
 
         HttpURLConnection urlConnection = null;
         BufferedReader reader = null;
@@ -111,9 +128,9 @@ public class TaskDownloadData extends AsyncTask<String, Void, Void> {
         // so that they can be closed in the finally block.
         try {
 
-            if (builtUri != null) {
+            if (query != null) {
 
-                URL url = new URL(builtUri.toString());
+                URL url = new URL(query);
 
                 // Create the request, and open the connection
                 urlConnection = (HttpURLConnection) url.openConnection();

@@ -1,5 +1,7 @@
 package com.example.al.cameramarkersoverlay;
 
+import android.content.res.Resources;
+import android.graphics.BitmapFactory;
 import android.support.v4.app.FragmentManager;
 import android.content.Context;
 import android.graphics.Bitmap;
@@ -13,7 +15,9 @@ import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 class ViewOverlay extends SurfaceView implements SurfaceHolder.Callback, ObservableWarning {
     private static final String LOG_TAG = ViewOverlay.class.getSimpleName();
@@ -43,8 +47,9 @@ class ViewOverlay extends SurfaceView implements SurfaceHolder.Callback, Observa
     private FragmentManager mFragmentManager;
     private Thread mDrawingThread;
 
+    private final Map<String,Bitmap> mBitmaps;
+
     private final SurfaceHolder mSurfaceHolder;
-    private final Bitmap mBitmap;
     private final Paint mBitmapPainter = new Paint();
     private final Paint mCirclePainter = new Paint();
 
@@ -53,7 +58,7 @@ class ViewOverlay extends SurfaceView implements SurfaceHolder.Callback, Observa
     private float mY = OUT_OF_BOUNDS;
     private float mCanvasHalfWidth = 0, mCanvasHalfHeight = 0;
 
-    public ViewOverlay(Context context, Bitmap bitmap, InterfaceSensors interfaceSensors,
+    public ViewOverlay(Context context, InterfaceSensors interfaceSensors,
                        FragmentManager fragmentManager) {
 
         super(context);
@@ -62,10 +67,18 @@ class ViewOverlay extends SurfaceView implements SurfaceHolder.Callback, Observa
         mObserversWarning = new ArrayList<>();
         mFragmentManager = fragmentManager;
 
+        mBitmaps = new HashMap<>();
+        Resources resources = context.getResources();
+        mBitmaps.put("", BitmapFactory.decodeResource(resources, R.drawable.marker_other));
+        mBitmaps.put("drinks", BitmapFactory.decodeResource(resources, R.drawable.marker_drinks));
+        mBitmaps.put("food", BitmapFactory.decodeResource(resources, R.drawable.marker_food));
+        mBitmaps.put("health", BitmapFactory.decodeResource(resources, R.drawable.marker_health));
+        mBitmaps.put("hotel", BitmapFactory.decodeResource(resources, R.drawable.marker_hotel));
+        mBitmaps.put("money", BitmapFactory.decodeResource(resources, R.drawable.marker_money));
+        mBitmaps.put("sight", BitmapFactory.decodeResource(resources, R.drawable.marker_sight));
+
         mSurfaceHolder = getHolder();
         mSurfaceHolder.addCallback(this);
-
-        mBitmap = bitmap;
         mBitmapPainter.setAntiAlias(true);
 
         // для точки в середине экрана
@@ -125,7 +138,8 @@ class ViewOverlay extends SurfaceView implements SurfaceHolder.Callback, Observa
                 int bitmapSize = getBitmapSizeOnDistance(mSensors.getLocation().distanceTo(
                         mSensors.getMarkers().get(i).getLocation()));
 
-                Bitmap bitmap = Bitmap.createScaledBitmap(mBitmap,
+                Bitmap bitmap = Bitmap.createScaledBitmap(
+                        mBitmaps.get(mSensors.getMarkers().get(i).getType()),
                         bitmapSize,
                         bitmapSize,
                         false);

@@ -25,6 +25,10 @@
         azimuth: <xliff:g id="x">%1.0f</xliff:g>
     </string>
 
+    <string name="format_geometry">
+        {\"type\":\"point\",\"coordinates\":[<xliff:g id="lat">%1.6f</xliff:g>,<xliff:g id="lon">%2.6f</xliff:g>]}
+    </string>
+
     <string name="title_activity_activity_camera">ActivityCamera</string>
     <string name="button_close">Close</string>
     <string name="button_show_map">Show on Map</string>

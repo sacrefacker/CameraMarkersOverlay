@@ -5,10 +5,13 @@ import android.content.Intent;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Color;
+import android.graphics.PorterDuff;
 import android.support.v4.app.Fragment;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
@@ -19,6 +22,10 @@ public class FragmentMenu extends Fragment {
     private static int DOWNSIZE = 3;
 
     private Context mContext;
+
+    private enum Action {
+        MAIN, FILTERS, NONE
+    };
 
     public FragmentMenu() {
     }
@@ -40,40 +47,60 @@ public class FragmentMenu extends Fragment {
 
         ImageView buttonOverlay = (ImageView) rootView.findViewById(R.id.main_menu_overlay_button);
         buttonOverlay.setImageBitmap(sampledBitmap(res, R.drawable.earth_icon, iconSize, iconSize));
-        buttonOverlay.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                openOverlay();
-            }
-        });
+        buttonOverlay.setOnTouchListener(new ImageTouchListener(Action.MAIN));
 
         ImageView buttonFilters = (ImageView) rootView.findViewById(R.id.main_menu_filters_button);
         buttonFilters.setImageBitmap(sampledBitmap(res, R.drawable.checklist_icon, iconSize, iconSize));
-        buttonFilters.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                openFilters();
-            }
-        });
+        buttonFilters.setOnTouchListener(new ImageTouchListener(Action.FILTERS));
 
-        ImageView buttonSearch = (ImageView) rootView.findViewById(R.id.main_menu_find_button);
+        final ImageView buttonSearch = (ImageView) rootView.findViewById(R.id.main_menu_find_button);
         buttonSearch.setImageBitmap(sampledBitmap(res, R.drawable.binoculars_icon, iconSize, iconSize));
+        buttonSearch.setOnTouchListener(new ImageTouchListener(Action.NONE));
 
         ImageView buttonSettings = (ImageView) rootView.findViewById(R.id.main_menu_settings_button);
         buttonSettings.setImageBitmap(sampledBitmap(res, R.drawable.settings_icon, iconSize, iconSize));
-
+        buttonSettings.setOnTouchListener(new ImageTouchListener(Action.NONE));
 
         return rootView;
     }
 
-    private void openFilters() {
-        Intent intent = new Intent(mContext, ActivityFilters.class);
-        startActivity(intent);
-    }
+    private class ImageTouchListener implements View.OnTouchListener {
+        private Action mAction;
 
-    private void openOverlay() {
-        Intent intent = new Intent(mContext, ActivityMain.class);
-        startActivity(intent);
+        public ImageTouchListener(Action action) {
+            mAction = action;
+        }
+
+        @Override
+        public boolean onTouch(View v, MotionEvent event) {
+            ImageView imageView = (ImageView) v;
+            switch (event.getAction()) {
+                case MotionEvent.ACTION_DOWN: {
+                    imageView.setBackgroundColor(Color.parseColor("#AAAAAA"));
+                    imageView.invalidate();
+                    break;
+                }
+                case MotionEvent.ACTION_UP:
+                    Intent intent = null;
+                    switch (mAction) {
+                        case MAIN:
+                            intent = new Intent(mContext, ActivityMain.class);
+                            break;
+                        case FILTERS:
+                            intent = new Intent(mContext, ActivityFilters.class);
+                            break;
+                    }
+                    if (intent != null) {
+                        startActivity(intent);
+                    }
+                case MotionEvent.ACTION_CANCEL: {
+                    imageView.setBackgroundColor(Color.parseColor("#CCCCCC"));
+                    imageView.invalidate();
+                    break;
+                }
+            }
+            return true;
+        }
     }
 
     public static Bitmap sampledBitmap(Resources res, int resId, int reqWidth, int reqHeight) {

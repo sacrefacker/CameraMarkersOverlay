@@ -11,6 +11,7 @@ public class LocationMarker implements Comparable<LocationMarker> {
     private String name = "";
     private Location location = null;
     private String channel = "";
+    private String type = "";
     private String image = "";
     private String date = "";
     private boolean bc = false;
@@ -60,6 +61,14 @@ public class LocationMarker implements Comparable<LocationMarker> {
 
     public void setId(Integer id) {
         this.id = id;
+    }
+
+    public String getType() {
+        return type;
+    }
+
+    public void setType(String type) {
+        this.type = type;
     }
 
     public String getImage() {

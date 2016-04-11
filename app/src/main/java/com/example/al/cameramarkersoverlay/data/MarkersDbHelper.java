@@ -10,7 +10,7 @@ import com.example.al.cameramarkersoverlay.data.MarkersContract.ChannelEntry;
 public class MarkersDbHelper extends SQLiteOpenHelper {
 
     // If you change the database schema, you must increment the database version.
-    private static final int DATABASE_VERSION = 5;
+    private static final int DATABASE_VERSION = 10;
 
     static final String DATABASE_NAME = "markers.db";
 
@@ -44,6 +44,7 @@ public class MarkersDbHelper extends SQLiteOpenHelper {
                 MarkersEntry.COLUMN_LAT + " REAL NOT NULL, " +
                 MarkersEntry.COLUMN_LONG + " REAL NOT NULL, " +
                 MarkersEntry.COLUMN_ALT + " REAL, " +
+                MarkersEntry.COLUMN_TYPE + " TEXT, " +
                 MarkersEntry.COLUMN_IMAGE + " TEXT, " +
                 MarkersEntry.COLUMN_DATE + " INTEGER, " +
                 MarkersEntry.COLUMN_BC + " TEXT, " +
