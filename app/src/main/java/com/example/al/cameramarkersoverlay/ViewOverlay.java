@@ -14,6 +14,8 @@ import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 
+import com.example.al.cameramarkersoverlay.data.LocationMarker;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -210,7 +212,7 @@ class ViewOverlay extends SurfaceView implements SurfaceHolder.Callback, Observa
             if (touchY > mY - TOUCH_SIZE && touchY < mY + TOUCH_SIZE) {
                 for (int i = 0; i < mXs.size(); i++) {
                     if (touchX > mXs.get(i) - TOUCH_SIZE && touchX < mXs.get(i) + TOUCH_SIZE) {
-                        openDetailView(mSensors.getMarkers().get(i).getLocation());
+                        openDetailView(mSensors.getMarkers().get(i));
                     }
                 }
             }
@@ -219,11 +221,14 @@ class ViewOverlay extends SurfaceView implements SurfaceHolder.Callback, Observa
     }
 
     // при касании маркера открываем диалог с информацией о маркере
-    private void openDetailView(Location location) {
+    private void openDetailView(LocationMarker locationMarker) {
         FragmentDialog dialogFragment = new FragmentDialog();
         Bundle bundle = new Bundle();
-        bundle.putDouble(FragmentDialog.BUNDLE_LAT, location.getLatitude());
-        bundle.putDouble(FragmentDialog.BUNDLE_LONG, location.getLongitude());
+        bundle.putDouble(FragmentDialog.BUNDLE_LAT, locationMarker.getLocation().getLatitude());
+        bundle.putDouble(FragmentDialog.BUNDLE_LONG, locationMarker.getLocation().getLongitude());
+        bundle.putDouble(FragmentDialog.BUNDLE_DIST, locationMarker.getDistance());
+        bundle.putString(FragmentDialog.BUNDLE_NAME, locationMarker.getName());
+        bundle.putString(FragmentDialog.BUNDLE_TYPE, locationMarker.getType());
         dialogFragment.setArguments(bundle);
         dialogFragment.show(mFragmentManager, FRAGMENT_TAG);
     }

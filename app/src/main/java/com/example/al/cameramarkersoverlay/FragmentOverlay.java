@@ -4,7 +4,6 @@ package com.example.al.cameramarkersoverlay;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.database.Cursor;
-import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.graphics.PixelFormat;
 import android.hardware.Camera;
@@ -66,11 +65,15 @@ public class FragmentOverlay extends Fragment
     private static final String[] MARKERS_COLUMNS = {
             MarkersContract.MarkersEntry.TABLE_NAME + "." + MarkersContract.MarkersEntry._ID,
             MarkersContract.MarkersEntry.COLUMN_LAT,
-            MarkersContract.MarkersEntry.COLUMN_LONG
+            MarkersContract.MarkersEntry.COLUMN_LONG,
+            MarkersContract.MarkersEntry.COLUMN_NAME,
+            MarkersContract.MarkersEntry.COLUMN_TYPE
     };
     // для получения значений из курсора
     private static final int CURSOR_COLUMN_LAT = 1;
     private static final int CURSOR_COLUMN_LONG = 2;
+    private static final int CURSOR_COLUMN_NAME = 3;
+    private static final int CURSOR_COLUMN_TYPE = 4;
 
     private Context mContext;
 
@@ -99,7 +102,7 @@ public class FragmentOverlay extends Fragment
     private double mRoll;
 
     private ViewOverlay mOverlaySurface;
-    private TextView mAzimuthView;
+    private TextView mServiceText;
     private ImageView mWarningView;
 
     public FragmentOverlay() {
@@ -229,10 +232,10 @@ public class FragmentOverlay extends Fragment
         frameLayout.addView(warningFrame);
 
         // TextView для отображения текущего значения азимута и локации
-        mAzimuthView = new TextView(mContext);
-        mAzimuthView.setTextAppearance(mContext, android.R.style.TextAppearance_Medium);
-        mAzimuthView.setTextColor(Color.RED);
-        frameLayout.addView(mAzimuthView);
+        mServiceText = new TextView(mContext);
+        mServiceText.setTextAppearance(mContext, android.R.style.TextAppearance_Medium);
+        mServiceText.setTextColor(Color.RED);
+        frameLayout.addView(mServiceText);
 
         return rootView;
     }
@@ -330,7 +333,11 @@ public class FragmentOverlay extends Fragment
                 mPitch = Math.toDegrees(mOrientationAverage[1]);
                 mRoll = Math.toDegrees(mOrientationAverage[2]);
 
-                mAzimuthView.setText(String.format(mContext.getString(R.string.format_azimuth), mAzimuth));
+                String serviceText = String.format(mContext.getString(R.string.format_azimuth), mAzimuth);
+                if (mMarkers != null && mMarkers.size() != 0) {
+                    serviceText = serviceText.concat(", " + mMarkers.size());
+                }
+                mServiceText.setText(serviceText);
 
                 // обнуляем данные, чтобы ждать новые - так они каждый раз будут свеженькими
                 mGravity = mGeomagnetic = null;
@@ -423,6 +430,8 @@ public class FragmentOverlay extends Fragment
             LocationMarker locationMarker = new LocationMarker(
                     cursor.getDouble(CURSOR_COLUMN_LAT),
                     cursor.getDouble(CURSOR_COLUMN_LONG));
+            locationMarker.setName(cursor.getString(CURSOR_COLUMN_NAME));
+            locationMarker.setType(cursor.getString(CURSOR_COLUMN_TYPE));
             if (mLocation != null) {
                 locationMarker.setDistance(mLocation.distanceTo(locationMarker.getLocation()));
             }

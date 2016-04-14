@@ -21,7 +21,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.util.Locale;
+import java.util.List;
 import java.util.Set;
 import java.util.Vector;
 
@@ -31,15 +31,17 @@ public class TaskDownloadData extends AsyncTask<String, Void, Void> {
     public static final int DOWNLOAD_CHANNELS = 0;
     public static final int DOWNLOAD_MARKERS = 1;
 
-    public static final String CHANNELS_URL = "http://demo.geo2tag.org/instance/service/testservice/channel?";
-    public static final String POINTS_URL = "http://demo.geo2tag.org/instance/service/testservice/point?";
+    public static final String CHANNELS_URL = "http://demo.geo2tag.org/instance/service/CameraMarkersOverlay/channel?";
+    public static final String POINTS_URL = "http://demo.geo2tag.org/instance/service/CameraMarkersOverlay/point?";
     public static final String NUMBER_PARAM = "number";
-    public static final int QUANTITY = 10;
+    public static final String OFFSET_PARAM = "offset";
+    public static final int QUANTITY_CHANNELS = 100;
+    public static final int QUANTITY_MARKERS = 10;
     public static final String CHANNEL_IDS_PARAM = "channel_ids";
     public static final String GEOMETRY_PARAM = "geometry";
     public static final String RADIUS_PARAM = "radius";
     // TODO: поменять после появления возможности добавлять свои точки
-    public static final int RADIUS = 10000;
+    public static final int RADIUS = 100;
 
     private Context mContext;
 
@@ -53,67 +55,81 @@ public class TaskDownloadData extends AsyncTask<String, Void, Void> {
     @Override
     protected Void doInBackground(String... params) {
         String query;
-        StringBuilder buffer = new StringBuilder();
+        StringBuilder resultBuffer = null;
 
-        switch (mDownloadMode) {
-            case DOWNLOAD_CHANNELS:
-                query = Uri.parse(CHANNELS_URL).buildUpon()
-                        .appendQueryParameter(NUMBER_PARAM, String.valueOf(QUANTITY))
-                        .build()
-                        .toString();
-                buffer.append(fetchData(query));
-                // перенесено из getChannelsFromJson - удаляем раньше времени?
-                mContext.getContentResolver().delete(ChannelEntry.CONTENT_URI, null, null);
-                break;
-            case DOWNLOAD_MARKERS:
-                Set<String> channels = ChannelsContainer.getInstance(mContext).getChannels();
-                for (String channel : channels) {
-                    Log.i(LOG_TAG, "Channel " + channel + "\n");
-                    float lat = Float.valueOf(params[0]);
-                    float lon = Float.valueOf(params[1]);
+        try {
+            switch (mDownloadMode) {
+                case DOWNLOAD_CHANNELS:
 
-                    // решить, как лучше формировать строку
-//                    String geom = String.format(Locale.ENGLISH, mContext.getString(R.string.format_geometry), lat, lon);
-                    String geom = "{\"type\":\"Point\",\"coordinates\":[" + lat + "," + lon + "]}";
-                    Log.i(LOG_TAG, geom);
-                    query = Uri.parse(POINTS_URL).buildUpon()
-                            .appendQueryParameter(NUMBER_PARAM, String.valueOf(QUANTITY))
-                            .appendQueryParameter(CHANNEL_IDS_PARAM, channel)
-                            .appendQueryParameter(RADIUS_PARAM, String.valueOf(RADIUS))
+                    // перенесено из getChannelsFromJson - удаляем раньше времени?
+                    mContext.getContentResolver().delete(ChannelEntry.CONTENT_URI, null, null);
+
+                    query = Uri.parse(CHANNELS_URL).buildUpon()
+                            .appendQueryParameter(NUMBER_PARAM, String.valueOf(QUANTITY_CHANNELS))
                             .build()
-                            .toString()
-                            .concat("&" + GEOMETRY_PARAM + "=")
-                            .concat(geom);
-                    buffer.append(fetchData(query));
+                            .toString();
+
+                    resultBuffer = fetchData(query);
+
+                    if (resultBuffer != null && resultBuffer.length() != 0) {
+                        String jsonStr = resultBuffer.toString();
+                        Log.i(LOG_TAG, jsonStr);
+                        int inserted = getChannelsFromJson(jsonStr);
+                        Log.i(LOG_TAG, "inserted " + inserted);
+                    }
+                    break;
+
+                case DOWNLOAD_MARKERS:
+
                     // перенесено из getMarkersFromJson - удаляем раньше времени?
                     mContext.getContentResolver().delete(MarkersEntry.CONTENT_URI, null, null);
-                }
-                break;
-            default:
-                Log.i(LOG_TAG, "Wrong mode");
-                return null;
-        }
 
-        if (buffer.length() != 0) {
-            String jsonStr = buffer.toString();
-            Log.i(LOG_TAG, jsonStr);
+                    Set<String> channels = ChannelsContainer.getInstance(mContext).getChannels();
+                    for (String channel : channels) {
+                        Log.i(LOG_TAG, "Channel " + channel + "\n");
+                        float lat = Float.valueOf(params[0]);
+                        float lon = Float.valueOf(params[1]);
 
-            try {
-                switch (mDownloadMode) {
-                    case DOWNLOAD_CHANNELS:
-                        getChannelsFromJson(jsonStr);
-                        break;
-                    case DOWNLOAD_MARKERS:
-                        getMarkersFromJson(jsonStr);
-                        break;
-                    default:
-                        Log.i(LOG_TAG, "Wrong mode");
-                        return null;
-                }
-            } catch (JSONException ex) {
-                Log.e(LOG_TAG, ex.getMessage(), ex);
-                ex.printStackTrace();
+                        // TODO: решить, как лучше формировать строку
+                        // String geom = String.format(Locale.ENGLISH, mContext.getString(R.string.format_geometry), lat, lon);
+                        String geom = "{\"type\":\"Point\",\"coordinates\":[" + lon + "," + lat + "]}";
+
+                        for (int i = 0; i == 0 || (resultBuffer != null && resultBuffer.length() != 0); i++) {
+                            query = Uri.parse(POINTS_URL).buildUpon()
+                                    .appendQueryParameter(NUMBER_PARAM, String.valueOf(QUANTITY_MARKERS))
+                                    .appendQueryParameter(OFFSET_PARAM, String.valueOf(QUANTITY_MARKERS * i))
+                                    .appendQueryParameter(CHANNEL_IDS_PARAM, channel)
+                                    .appendQueryParameter(RADIUS_PARAM, String.valueOf(RADIUS))
+                                    .build()
+                                    .toString()
+                                    .concat("&" + GEOMETRY_PARAM + "=")
+                                    .concat(geom)
+                            ;
+                            Log.i(LOG_TAG, query);
+
+                            resultBuffer = fetchData(query);
+
+                            if (resultBuffer != null && resultBuffer.length() != 0) {
+                                String jsonStr = resultBuffer.toString();
+                                Log.i(LOG_TAG, "i " + i + ", string size " + jsonStr.length());
+                                Log.i(LOG_TAG, jsonStr);
+                                int inserted = getMarkersFromJson(jsonStr);
+                                Log.i(LOG_TAG, "inserted " + inserted);
+                                if (inserted == 0) {
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    break;
+
+                default:
+                    Log.i(LOG_TAG, "Wrong mode");
+                    return null;
             }
+        } catch (JSONException ex) {
+            Log.e(LOG_TAG, ex.getMessage(), ex);
+            ex.printStackTrace();
         }
         return null;
     }
@@ -123,6 +139,7 @@ public class TaskDownloadData extends AsyncTask<String, Void, Void> {
         HttpURLConnection urlConnection = null;
         BufferedReader reader = null;
         StringBuilder buffer = new StringBuilder();
+        buffer.setLength(0);
 
         // These two need to be declared outside the try/catch
         // so that they can be closed in the finally block.
@@ -172,21 +189,25 @@ public class TaskDownloadData extends AsyncTask<String, Void, Void> {
             }
         }
 
+        Log.i(LOG_TAG, "func: " + buffer.toString());
         return buffer;
     }
 
-    private void getMarkersFromJson(String jsonStr) throws JSONException {
+    private int getMarkersFromJson(String jsonStr) throws JSONException {
+        int inserted = 0;
 //        mContentVector = new DummyDownload().download();
 
         // Location information
         final String JSON_LOCATION = "location";
         final String JSON_COORDINATES = "coordinates";
+        final String JSON_DESC = "json";
+        final String JSON_NAME = "name";
+        final String JSON_TYPE = "type";
 
         try {
             JSONArray jsonArray = new JSONArray(jsonStr);
 
-            Vector<ContentValues> cVVector = new Vector<ContentValues>(jsonArray.length());
-
+            Vector<ContentValues> cVVector = new Vector<>(jsonArray.length());
             for(int i = 0; i < jsonArray.length(); i++) {
                 // These are the values that will be collected.
                 double lat, lon;
@@ -195,27 +216,39 @@ public class TaskDownloadData extends AsyncTask<String, Void, Void> {
                 JSONObject marker = jsonArray.getJSONObject(i);
                 JSONObject location = marker.getJSONObject(JSON_LOCATION);
                 JSONArray coordinates = location.getJSONArray(JSON_COORDINATES);
-                lat = coordinates.getDouble(0);
-                lon = coordinates.getDouble(1);
+                // TODO: координаты в обратном порядке?
+                lat = coordinates.getDouble(1);
+                lon = coordinates.getDouble(0);
+                /*lat = coordinates.getDouble(0);
+                lon = coordinates.getDouble(1);*/
+
+                JSONObject desc = marker.getJSONObject(JSON_DESC);
+                String name = desc.getString(JSON_NAME);
+                // TODO: в стандартных типа может не быть
+                String type = desc.getString(JSON_TYPE);
 
                 ContentValues values = new ContentValues();
                 values.put(MarkersContract.MarkersEntry.COLUMN_LAT, lat);
                 values.put(MarkersContract.MarkersEntry.COLUMN_LONG, lon);
+                values.put(MarkersEntry.COLUMN_NAME, name);
+                values.put(MarkersEntry.COLUMN_TYPE, type);
                 cVVector.add(values);
             }
 
             // добавляем значения в БД
             if ( cVVector.size() > 0 ) {
-                insertData(cVVector, MarkersEntry.CONTENT_URI);
+                inserted = insertData(cVVector, MarkersEntry.CONTENT_URI);
             }
 
         } catch (JSONException e) {
             Log.e(LOG_TAG, e.getMessage(), e);
             e.printStackTrace();
         }
+        return inserted;
     }
 
-    private void getChannelsFromJson(String jsonStr) throws JSONException {
+    private int getChannelsFromJson(String jsonStr) throws JSONException {
+        int inserted = 0;
 
         final String JSON_NAME = "name";
         final String JSON_ID = "_id";
@@ -224,7 +257,7 @@ public class TaskDownloadData extends AsyncTask<String, Void, Void> {
         try {
             JSONArray jsonArray = new JSONArray(jsonStr);
 
-            Vector<ContentValues> cVVector = new Vector<ContentValues>(jsonArray.length());
+            Vector<ContentValues> cVVector = new Vector<>(jsonArray.length());
 
             for(int i = 0; i < jsonArray.length(); i++) {
 
@@ -242,19 +275,22 @@ public class TaskDownloadData extends AsyncTask<String, Void, Void> {
 
             // заменяем значения в БД
             if ( cVVector.size() > 0 ) {
-                insertData(cVVector, ChannelEntry.CONTENT_URI);
+                inserted = insertData(cVVector, ChannelEntry.CONTENT_URI);
             }
 
         } catch (JSONException e) {
             Log.e(LOG_TAG, e.getMessage(), e);
             e.printStackTrace();
         }
+        return inserted;
     }
 
-    private void insertData(Vector<ContentValues> vector, Uri contentUri) {
+    private int insertData(Vector<ContentValues> vector, Uri contentUri) {
         Log.i(LOG_TAG, "Refreshing data");
         ContentValues cVArray[] = new ContentValues[vector.size()];
         vector.toArray(cVArray);
-        mContext.getContentResolver().bulkInsert(contentUri, cVArray);
+        int inserted = mContext.getContentResolver().bulkInsert(contentUri, cVArray);
+        Log.i(LOG_TAG, "inserted " + inserted);
+        return inserted;
     }
 }

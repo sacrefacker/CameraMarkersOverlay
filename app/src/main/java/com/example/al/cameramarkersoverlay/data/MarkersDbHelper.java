@@ -10,7 +10,7 @@ import com.example.al.cameramarkersoverlay.data.MarkersContract.ChannelEntry;
 public class MarkersDbHelper extends SQLiteOpenHelper {
 
     // If you change the database schema, you must increment the database version.
-    private static final int DATABASE_VERSION = 10;
+    private static final int DATABASE_VERSION = 11;
 
     static final String DATABASE_NAME = "markers.db";
 
@@ -40,7 +40,7 @@ public class MarkersDbHelper extends SQLiteOpenHelper {
                 // should be sorted accordingly.
                 MarkersEntry._ID + " INTEGER PRIMARY KEY AUTOINCREMENT," +
 
-                MarkersEntry.COLUMN_NAME + " TEXT," +
+                MarkersEntry.COLUMN_NAME + " TEXT NOT NULL," +
                 MarkersEntry.COLUMN_LAT + " REAL NOT NULL, " +
                 MarkersEntry.COLUMN_LONG + " REAL NOT NULL, " +
                 MarkersEntry.COLUMN_ALT + " REAL, " +
@@ -53,7 +53,7 @@ public class MarkersDbHelper extends SQLiteOpenHelper {
 
                 // From intuition the coordinates should be unique
                 " UNIQUE (" + MarkersEntry.COLUMN_LAT + ", " +
-                MarkersEntry.COLUMN_LONG + ") ON CONFLICT REPLACE);";
+                MarkersEntry.COLUMN_LONG + ", " + MarkersEntry.COLUMN_NAME + ") ON CONFLICT REPLACE);";
 
         sqLiteDatabase.execSQL(SQL_CREATE_MARKERS_TABLE);
     }

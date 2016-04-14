@@ -18,8 +18,13 @@ public class FragmentDialog extends DialogFragment {
 
     public static final String BUNDLE_LAT = "lat";
     public static final String BUNDLE_LONG = "long";
+    public static final String BUNDLE_DIST = "dist";
+    public static final String BUNDLE_NAME = "name";
+    public static final String BUNDLE_TYPE = "type";
 
     private double mLatitude = 0.0, mLongitude = 0.0;
+    private double mDistance = 0.0;
+    private String mName = "", mType = "";
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -29,6 +34,9 @@ public class FragmentDialog extends DialogFragment {
         if (bundle != null) {
             mLatitude = bundle.getDouble(BUNDLE_LAT);
             mLongitude = bundle.getDouble(BUNDLE_LONG);
+            mDistance = bundle.getDouble(BUNDLE_DIST);
+            mName = bundle.getString(BUNDLE_NAME);
+            mType = bundle.getString(BUNDLE_TYPE);
         }
     }
 
@@ -39,7 +47,8 @@ public class FragmentDialog extends DialogFragment {
         View customDialogView = inflater.inflate(R.layout.fragment_dialog, null);
 
         TextView textView = (TextView) customDialogView.findViewById(R.id.dialog_location_text);
-        textView.setText(String.format(getString(R.string.format_location), mLatitude, mLongitude));
+        textView.setText(String.format(getString(R.string.format_dialog),
+                mName, mType, mDistance, mLatitude, mLongitude));
 
         // Use the Builder class for convenient dialog construction
         AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
