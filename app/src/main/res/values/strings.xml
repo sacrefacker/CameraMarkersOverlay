@@ -33,6 +33,14 @@
         azimuth: <xliff:g id="x">%1.0f</xliff:g>
     </string>
 
+    <string name="format_markers_loaded">
+        <xliff:g id="x">%d</xliff:g> markers downloaded
+    </string>
+
+    <string name="format_channels_loaded">
+        <xliff:g id="x">%d</xliff:g> channels downloaded
+    </string>
+
     <string name="format_geometry">
         {\"type\":\"point\",\"coordinates\":[<xliff:g id="lat">%1.6f</xliff:g>,<xliff:g id="lon">%2.6f</xliff:g>]}
     </string>

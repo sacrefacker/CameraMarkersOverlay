@@ -213,6 +213,8 @@ class ViewOverlay extends SurfaceView implements SurfaceHolder.Callback, Observa
                 for (int i = 0; i < mXs.size(); i++) {
                     if (touchX > mXs.get(i) - TOUCH_SIZE && touchX < mXs.get(i) + TOUCH_SIZE) {
                         openDetailView(mSensors.getMarkers().get(i));
+                        // отбой, иначе будет открывать диалог для всех маркеров в области нажатия
+                        break;
                     }
                 }
             }

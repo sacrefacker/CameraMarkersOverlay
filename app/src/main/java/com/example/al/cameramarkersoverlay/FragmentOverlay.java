@@ -33,6 +33,7 @@ import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.example.al.cameramarkersoverlay.data.ChannelsContainer;
 import com.example.al.cameramarkersoverlay.data.LocationMarker;
@@ -44,7 +45,7 @@ import java.util.Collections;
 
 public class FragmentOverlay extends Fragment
         implements SensorEventListener, LoaderManager.LoaderCallbacks<Cursor>,
-        InterfaceSensors {
+        InterfaceSensors, InterfaceTaskNotifier {
 
     private static final String LOG_TAG = FragmentOverlay.class.getSimpleName();
     // для сохранения в shared preferences
@@ -92,6 +93,9 @@ public class FragmentOverlay extends Fragment
     private Camera mCamera;
     private SurfaceHolder mCameraHolder;
     private boolean mIsPreviewing;
+
+    private boolean mLoaderAllowed = true;
+    private int mWarningStartVisibility = View.INVISIBLE;
 
     private Location mQueryLocation = null; // локация, из которой запрашивались точки с сервера
     // данные, которые понадобятся для отрисовки маркеров
@@ -154,8 +158,9 @@ public class FragmentOverlay extends Fragment
         mLocationListener = new LocationListener() {
             public void onLocationChanged(Location location) {
                 if (mLocation == null) {
+                    Log.i(LOG_TAG, "init after mLocation was null");
                     mLocation = location;
-                    initLoader();
+                    goLoader();
                 }
                 else {
                     mLocation = location;
@@ -165,9 +170,8 @@ public class FragmentOverlay extends Fragment
                 if (mQueryLocation == null
                         || mQueryLocation.distanceTo(mLocation) > DISTANCE_BEFORE_MARKERS_UPDATE) {
 
-                    Log.i(LOG_TAG, "Downloading markers");
+                    Log.i(LOG_TAG, "Downloading markers because of mQueryLocation");
                     downloadMarkers();
-                    mQueryLocation = new Location(mLocation);
                 }
             }
             public void onStatusChanged(String provider, int status, Bundle extras) {
@@ -190,10 +194,15 @@ public class FragmentOverlay extends Fragment
     }
 
     private void downloadMarkers() {
-        String lat = String.valueOf (mLocation.getLatitude());
-        String lon = String.valueOf (mLocation.getLongitude());
-        new TaskDownloadData(getContext(), TaskDownloadData.DOWNLOAD_MARKERS).execute(lat, lon);
-        ChannelsContainer.getInstance(mContext).clearChangesFlag();
+        if (mLocation == null) {
+            Log.i(LOG_TAG, "unexpected, unable to download markers, mLocation == null");
+        }
+        else {
+            mQueryLocation = new Location(mLocation);
+            String lat = String.valueOf (mLocation.getLatitude());
+            String lon = String.valueOf (mLocation.getLongitude());
+            new TaskDownloadData(getContext(), this, TaskDownloadData.DOWNLOAD_MARKERS).execute(lat, lon);
+        }
     }
 
     @Override
@@ -228,6 +237,7 @@ public class FragmentOverlay extends Fragment
         // ImageView для отображения картинки-подсказки
         mWarningView = new ImageView(mContext);
         mWarningView.setImageResource(R.drawable.overlay_warning);
+        mWarningView.setVisibility(mWarningStartVisibility);
         warningFrame.addView(mWarningView);
         frameLayout.addView(warningFrame);
 
@@ -244,6 +254,16 @@ public class FragmentOverlay extends Fragment
     public void onResume() {
         Log.i(LOG_TAG, "onResume");
         super.onResume();
+
+        resumeLocation();
+        if (mLocation != null) {
+            Log.i(LOG_TAG, "mLocation wasn't null");
+            goLoader();
+        }
+
+        if (ChannelsContainer.getInstance(mContext).hasChanges() && mLocation != null) {
+            downloadMarkers();
+        }
 
         try {
             // Обновления локации от провайдера
@@ -275,17 +295,12 @@ public class FragmentOverlay extends Fragment
             }
         }
 
-        resumeLocation();
-
-        if (ChannelsContainer.getInstance(mContext).hasChanges() && mLocation != null) {
-            downloadMarkers();
-        }
-
         startPreview();
         mOverlaySurface.setVisibility(View.VISIBLE);
     }
 
     private void resumeLocation() {
+        // TODO: заменить нули в стандарте несуществующими широтой и долготой?
         SharedPreferences prefs = getActivity().getPreferences(Context.MODE_PRIVATE);
         double qLat = Double.longBitsToDouble(prefs.getLong(PREFS_Q_LAT, 0));
         double qLon = Double.longBitsToDouble(prefs.getLong(PREFS_Q_LONG, 0));
@@ -386,14 +401,37 @@ public class FragmentOverlay extends Fragment
     }
 
     @Override
-    public void onActivityCreated(Bundle savedInstanceState) {
-        Log.i(LOG_TAG, "onActivityCreated");
-        initLoader();
-        super.onActivityCreated(savedInstanceState);
+    public void taskDownloaderStarted() {
+        mLoaderAllowed = false;
+        stopLoader();
     }
 
-    private void initLoader() {
-        getLoaderManager().initLoader(MARKER_LOADER, null, this);
+    @Override
+    public void taskDownloadFinished(int number) {
+        mLoaderAllowed = true;
+        ChannelsContainer.getInstance(mContext).clearChangesFlag();
+        goLoader();
+        String toastText = String.format(mContext.getString(R.string.format_markers_loaded), number);
+        Toast.makeText(mContext, toastText, Toast.LENGTH_LONG).show();
+    }
+
+    private void stopLoader() {
+        if (getLoaderManager().getLoader(MARKER_LOADER) != null) {
+            getLoaderManager().destroyLoader(MARKER_LOADER);
+        }
+    }
+
+    // like singleton?
+    private void goLoader() {
+        Log.i(LOG_TAG, "go loader");
+        if (mLoaderAllowed) {
+            Log.i(LOG_TAG, "allowed");
+            if (getLoaderManager().getLoader(MARKER_LOADER) == null) {
+                getLoaderManager().initLoader(MARKER_LOADER, null, this);
+            } else {
+                getLoaderManager().restartLoader(MARKER_LOADER, null, this);
+            }
+        }
     }
 
     @Override
@@ -451,7 +489,7 @@ public class FragmentOverlay extends Fragment
     }
 
     private class WarningOverlayHandler implements ObserverWarning {
-        boolean mIsVisible = false;
+        boolean mIsVisible = (mWarningStartVisibility == View.VISIBLE);
 
         @Override
         public void update(boolean visible) {
@@ -528,7 +566,7 @@ public class FragmentOverlay extends Fragment
                 case Surface.ROTATION_0:
                     Log.i(LOG_TAG, "ROTATION_0");
                 default:
-                    Log.i(LOG_TAG, "default");
+                    Log.i(LOG_TAG, "DEFAULT");
                     mCamera.setDisplayOrientation(90);
                     break;
             }

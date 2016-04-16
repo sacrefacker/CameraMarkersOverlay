@@ -16,13 +16,14 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ListView;
+import android.widget.Toast;
 
 import com.example.al.cameramarkersoverlay.data.ChannelsContainer;
 import com.example.al.cameramarkersoverlay.data.MarkersContract;
 import com.example.al.cameramarkersoverlay.data.MarkersContract.ChannelEntry;
 
 public class FragmentFilters extends Fragment
-        implements LoaderManager.LoaderCallbacks<Cursor>, InterfaceRefreshList {
+        implements LoaderManager.LoaderCallbacks<Cursor>, InterfaceRefreshList, InterfaceTaskNotifier {
     private static final String LOG_TAG = FragmentFilters.class.getSimpleName();
     private static final int CHANNELS_LOADER = 1;
 
@@ -41,6 +42,7 @@ public class FragmentFilters extends Fragment
     private AdapterFiltersList mAdapterFiltersList;
 
     private int mDownloadCount = 0;
+    private boolean mLoaderAllowed = true;
 
     public FragmentFilters() {
     }
@@ -73,7 +75,7 @@ public class FragmentFilters extends Fragment
     }
 
     private void downloadChannels() {
-        new TaskDownloadData(mContext, TaskDownloadData.DOWNLOAD_CHANNELS).execute();
+        new TaskDownloadData(mContext, this, TaskDownloadData.DOWNLOAD_CHANNELS).execute();
         mDownloadCount++;
     }
 
@@ -104,7 +106,7 @@ public class FragmentFilters extends Fragment
     @Override
     public void onActivityCreated(Bundle savedInstanceState) {
         Log.i(LOG_TAG, "onActivityCreated");
-        getLoaderManager().initLoader(CHANNELS_LOADER, null, this);
+        goLoader();
         super.onActivityCreated(savedInstanceState);
     }
 
@@ -113,6 +115,39 @@ public class FragmentFilters extends Fragment
         Log.i(LOG_TAG, "onPause");
         ChannelsContainer.getInstance(mContext).saveChanges();
         super.onPause();
+    }
+
+    @Override
+    public void taskDownloaderStarted() {
+        mLoaderAllowed = false;
+        stopLoader();
+    }
+
+    @Override
+    public void taskDownloadFinished(int number) {
+        mLoaderAllowed = true;
+        goLoader();
+        String toastText = String.format(mContext.getString(R.string.format_markers_loaded), number);
+        Toast.makeText(mContext, toastText, Toast.LENGTH_LONG).show();
+    }
+
+    private void stopLoader() {
+        if (getLoaderManager().getLoader(CHANNELS_LOADER) != null) {
+            getLoaderManager().destroyLoader(CHANNELS_LOADER);
+        }
+    }
+
+    // like singleton?
+    private void goLoader() {
+        Log.i(LOG_TAG, "go loader");
+        if (mLoaderAllowed) {
+            Log.i(LOG_TAG, "allowed");
+            if (getLoaderManager().getLoader(CHANNELS_LOADER) == null) {
+                getLoaderManager().initLoader(CHANNELS_LOADER, null, this);
+            } else {
+                getLoaderManager().restartLoader(CHANNELS_LOADER, null, this);
+            }
+        }
     }
 
     @Override

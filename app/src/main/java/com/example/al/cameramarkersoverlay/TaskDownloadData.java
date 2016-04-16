@@ -21,7 +21,6 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.util.List;
 import java.util.Set;
 import java.util.Vector;
 
@@ -45,17 +44,30 @@ public class TaskDownloadData extends AsyncTask<String, Void, Void> {
 
     private Context mContext;
 
+    private InterfaceTaskNotifier mTaskNotifier;
+
     private int mDownloadMode;
 
-    public TaskDownloadData(Context context, int mode) {
+    private int mInserted = 0;
+
+    public TaskDownloadData(Context context, InterfaceTaskNotifier callBack, int mode) {
         mContext = context;
+        mTaskNotifier = callBack;
         mDownloadMode = mode;
+    }
+
+    @Override
+    protected void onPreExecute() {
+        super.onPreExecute();
+        Log.i(LOG_TAG, "taskDownloaderStarted");
+        mTaskNotifier.taskDownloaderStarted();
     }
 
     @Override
     protected Void doInBackground(String... params) {
         String query;
         StringBuilder resultBuffer = null;
+        int inserted = 0;
 
         try {
             switch (mDownloadMode) {
@@ -74,8 +86,7 @@ public class TaskDownloadData extends AsyncTask<String, Void, Void> {
                     if (resultBuffer != null && resultBuffer.length() != 0) {
                         String jsonStr = resultBuffer.toString();
                         Log.i(LOG_TAG, jsonStr);
-                        int inserted = getChannelsFromJson(jsonStr);
-                        Log.i(LOG_TAG, "inserted " + inserted);
+                        mInserted = getChannelsFromJson(jsonStr);
                     }
                     break;
 
@@ -94,7 +105,7 @@ public class TaskDownloadData extends AsyncTask<String, Void, Void> {
                         // String geom = String.format(Locale.ENGLISH, mContext.getString(R.string.format_geometry), lat, lon);
                         String geom = "{\"type\":\"Point\",\"coordinates\":[" + lon + "," + lat + "]}";
 
-                        for (int i = 0; i == 0 || (resultBuffer != null && resultBuffer.length() != 0); i++) {
+                        for (int i = 0; i == 0 || inserted == QUANTITY_MARKERS; i++) {
                             query = Uri.parse(POINTS_URL).buildUpon()
                                     .appendQueryParameter(NUMBER_PARAM, String.valueOf(QUANTITY_MARKERS))
                                     .appendQueryParameter(OFFSET_PARAM, String.valueOf(QUANTITY_MARKERS * i))
@@ -113,11 +124,8 @@ public class TaskDownloadData extends AsyncTask<String, Void, Void> {
                                 String jsonStr = resultBuffer.toString();
                                 Log.i(LOG_TAG, "i " + i + ", string size " + jsonStr.length());
                                 Log.i(LOG_TAG, jsonStr);
-                                int inserted = getMarkersFromJson(jsonStr);
-                                Log.i(LOG_TAG, "inserted " + inserted);
-                                if (inserted == 0) {
-                                    break;
-                                }
+                                inserted = getMarkersFromJson(jsonStr);
+                                mInserted += inserted;
                             }
                         }
                     }
@@ -188,8 +196,6 @@ public class TaskDownloadData extends AsyncTask<String, Void, Void> {
                 }
             }
         }
-
-        Log.i(LOG_TAG, "func: " + buffer.toString());
         return buffer;
     }
 
@@ -224,7 +230,7 @@ public class TaskDownloadData extends AsyncTask<String, Void, Void> {
 
                 JSONObject desc = marker.getJSONObject(JSON_DESC);
                 String name = desc.getString(JSON_NAME);
-                // TODO: в стандартных типа может не быть
+                // TODO: в стандартных типов может не быть
                 String type = desc.getString(JSON_TYPE);
 
                 ContentValues values = new ContentValues();
@@ -286,11 +292,18 @@ public class TaskDownloadData extends AsyncTask<String, Void, Void> {
     }
 
     private int insertData(Vector<ContentValues> vector, Uri contentUri) {
-        Log.i(LOG_TAG, "Refreshing data");
+        Log.i(LOG_TAG, "insertData");
         ContentValues cVArray[] = new ContentValues[vector.size()];
         vector.toArray(cVArray);
         int inserted = mContext.getContentResolver().bulkInsert(contentUri, cVArray);
         Log.i(LOG_TAG, "inserted " + inserted);
         return inserted;
+    }
+
+    @Override
+    protected void onPostExecute(Void aVoid) {
+        super.onPostExecute(aVoid);
+        Log.i(LOG_TAG, "taskDownloadFinished");
+        mTaskNotifier.taskDownloadFinished(mInserted);
     }
 }

@@ -29,7 +29,7 @@ public class ChannelsContainer {
 
     private Set<String> mChannelIds;
 
-    private boolean mHasChanges = false;
+    private boolean mHasChanges = true;
 
     private ChannelsContainer() {
         loadPrefs();
@@ -85,11 +85,12 @@ public class ChannelsContainer {
     }
 
     public void clearChangesFlag() {
+        Log.i(LOG_TAG, "Clearing changes flag, was: " + mHasChanges);
         mHasChanges = false;
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(savedContext);
         SharedPreferences.Editor editor = prefs.edit();
         editor.putBoolean(PREFS_KEY_CHANGES, false);
-        Log.i(LOG_TAG, "Changes flag cleared");
-        editor.apply();
+        // apply() возможно не успевает сработать, с ним маркеры качаются 2 раза
+        editor.commit();
     }
 }
