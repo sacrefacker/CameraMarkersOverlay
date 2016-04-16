@@ -3,6 +3,7 @@ package com.example.al.cameramarkersoverlay;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.content.res.Configuration;
 import android.database.Cursor;
 import android.graphics.Color;
 import android.graphics.PixelFormat;
@@ -48,20 +49,21 @@ public class FragmentOverlay extends Fragment
         InterfaceSensors, InterfaceTaskNotifier {
 
     private static final String LOG_TAG = FragmentOverlay.class.getSimpleName();
+
     // для сохранения в shared preferences
     private static final String PREFS_Q_LAT = "qLat";
     private static final String PREFS_Q_LONG = "qLong";
     private static final String PREFS_LAT = "lat";
     private static final String PREFS_LONG = "long";
 
-    // id для CursorLoader
-    private static final int MARKER_LOADER = 0;
-
     // для регистрации менеджеров локации
     private static final long POLLING_FREQ = 1000 * 10;
     private static final float MIN_DISTANCE = 10.0f;
     private static final float DISTANCE_BEFORE_MARKERS_UPDATE = 500.0f;
 
+    // id для CursorLoader
+    private static final int MARKER_LOADER = 0;
+    private boolean mLoaderAllowed = true;
     // выбираем колонки таблицы для извлечения курсором из БД
     private static final String[] MARKERS_COLUMNS = {
             MarkersContract.MarkersEntry.TABLE_NAME + "." + MarkersContract.MarkersEntry._ID,
@@ -94,20 +96,19 @@ public class FragmentOverlay extends Fragment
     private SurfaceHolder mCameraHolder;
     private boolean mIsPreviewing;
 
-    private boolean mLoaderAllowed = true;
-    private int mWarningStartVisibility = View.INVISIBLE;
-
-    private Location mQueryLocation = null; // локация, из которой запрашивались точки с сервера
     // данные, которые понадобятся для отрисовки маркеров
+    private Location mQueryLocation = null; // локация, из которой запрашивались точки с сервера
     private Location mLocation = null; // текущая локация
     private ArrayList<LocationMarker> mMarkers;
     private double mAzimuth;
     private double mPitch;
     private double mRoll;
+    private double mLastSide = ViewOverlay.NO_SIDE;
 
     private ViewOverlay mOverlaySurface;
     private TextView mServiceText;
     private ImageView mWarningView;
+    private int mWarningStartVisibility = View.INVISIBLE;
 
     public FragmentOverlay() {
         // Необходим пустой публичный контейнер (не помню, по какой причине)
@@ -142,6 +143,41 @@ public class FragmentOverlay extends Fragment
     public int getScreenRotation() {
         WindowManager wm = ((WindowManager) mContext.getSystemService(Context.WINDOW_SERVICE));
         return wm.getDefaultDisplay().getRotation();
+    }
+
+    @Override
+    public double getOrientation() {
+        double onSide;
+
+        if (mRoll > ViewOverlay.RIGHT_SIDE - ViewOverlay.ROLL_TOLERANCE
+                && mRoll < ViewOverlay.RIGHT_SIDE + ViewOverlay.ROLL_TOLERANCE) {
+
+            onSide = ViewOverlay.RIGHT_SIDE;
+            restartCameraIfNeeded(onSide);
+            mLastSide = ViewOverlay.RIGHT_SIDE;
+        }
+
+        else if (mRoll > ViewOverlay.LEFT_SIDE - ViewOverlay.ROLL_TOLERANCE
+                && mRoll < ViewOverlay.LEFT_SIDE + ViewOverlay.ROLL_TOLERANCE) {
+
+            onSide = ViewOverlay.LEFT_SIDE;
+            restartCameraIfNeeded(onSide);
+            mLastSide = ViewOverlay.LEFT_SIDE;
+        }
+
+        else {
+            onSide = ViewOverlay.NO_SIDE;
+        }
+
+        return onSide;
+    }
+
+    private void restartCameraIfNeeded(double onSide) {
+        if (mLastSide != ViewOverlay.NO_SIDE && mLastSide != onSide) {
+            stopPreview();
+            refreshCameraRotation();
+            startPreview();
+        }
     }
 
     @Override
@@ -305,6 +341,7 @@ public class FragmentOverlay extends Fragment
         double qLat = Double.longBitsToDouble(prefs.getLong(PREFS_Q_LAT, 0));
         double qLon = Double.longBitsToDouble(prefs.getLong(PREFS_Q_LONG, 0));
         if (mQueryLocation == null && qLat != 0.0 && qLon != 0.0) {
+            Log.i(LOG_TAG, "query location restored");
             mQueryLocation = new Location(LocationManager.NETWORK_PROVIDER);
             mQueryLocation.setLatitude(qLat);
             mQueryLocation.setLongitude(qLon);
@@ -312,6 +349,7 @@ public class FragmentOverlay extends Fragment
         double lat = Double.longBitsToDouble(prefs.getLong(PREFS_LAT, 0));
         double lon = Double.longBitsToDouble(prefs.getLong(PREFS_LONG, 0));
         if (mLocation == null && lat != 0.0 && lon != 0.0) {
+            Log.i(LOG_TAG, "user location restored");
             mLocation = new Location(LocationManager.NETWORK_PROVIDER);
             mLocation.setLatitude(lat);
             mLocation.setLongitude(lon);
@@ -542,6 +580,28 @@ public class FragmentOverlay extends Fragment
         }
     }
 
+    private void refreshCameraRotation() {
+
+        int screenRotation = getScreenRotation();
+        switch (screenRotation) {
+            case Surface.ROTATION_90:
+                Log.i(LOG_TAG, "ROTATION_90");
+                mCamera.setDisplayOrientation(0);
+                break;
+            case Surface.ROTATION_270:
+                Log.i(LOG_TAG, "ROTATION_270");
+                mCamera.setDisplayOrientation(180);
+                break;
+            case Surface.ROTATION_0:
+                Log.i(LOG_TAG, "ROTATION_0");
+            default:
+                Log.i(LOG_TAG, "DEFAULT");
+                mCamera.setDisplayOrientation(90);
+                break;
+        }
+
+    }
+
     SurfaceHolder.Callback mSurfaceHolderCallback = new SurfaceHolder.Callback() {
 
         @Override
@@ -553,23 +613,7 @@ public class FragmentOverlay extends Fragment
             }
             stopPreview();
 
-            int screenRotation = getScreenRotation();
-            switch (screenRotation) {
-                case Surface.ROTATION_90:
-                    Log.i(LOG_TAG, "ROTATION_90");
-                    mCamera.setDisplayOrientation(0);
-                    break;
-                case Surface.ROTATION_270:
-                    Log.i(LOG_TAG, "ROTATION_270");
-                    mCamera.setDisplayOrientation(180);
-                    break;
-                case Surface.ROTATION_0:
-                    Log.i(LOG_TAG, "ROTATION_0");
-                default:
-                    Log.i(LOG_TAG, "DEFAULT");
-                    mCamera.setDisplayOrientation(90);
-                    break;
-            }
+            refreshCameraRotation();
 
             // инициализировать поверхность отображения просмотра
             try {

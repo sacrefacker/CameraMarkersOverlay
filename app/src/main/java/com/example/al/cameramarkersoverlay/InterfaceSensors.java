@@ -21,4 +21,6 @@ public interface InterfaceSensors {
 
     public int getScreenRotation();
 
+    public double getOrientation();
+
 }

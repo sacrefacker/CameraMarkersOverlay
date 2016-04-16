@@ -10,6 +10,7 @@ import android.graphics.Paint;
 import android.graphics.PorterDuff;
 import android.location.Location;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
@@ -26,12 +27,13 @@ class ViewOverlay extends SurfaceView implements SurfaceHolder.Callback, Observa
 
     private static final String FRAGMENT_TAG = "fragmentDialog";
 
-    private static final double ROLL_TOLERANCE = 10.0;
-    private static final double PITCH_TOLERANCE = 10.0;
-    private static final double FIELD_OF_VIEW = 40.0;
+    public static final double ROLL_TOLERANCE = 10.0;
+    public static final double PITCH_TOLERANCE = 10.0;
+    public static final double FIELD_OF_VIEW = 40.0;
 
     private static final float OUT_OF_BOUNDS = 10000.0f;
     private static final int TOUCH_SIZE = 100;
+    private static final long FRAME_RATE_TIME = 40;
 
     // коррекция значения азимута в связи с ориентацией телефона во время искользования приложения
     private static final double AZIMUTH_ORIENTATION_CORRECTION_RIGHT = -90.0;
@@ -107,7 +109,12 @@ class ViewOverlay extends SurfaceView implements SurfaceHolder.Callback, Observa
         // точка посередине холста для лучшей ориентации на глаз
         canvas.drawCircle(mCanvasHalfWidth, mCanvasHalfHeight, 10.0f, mCirclePainter);
 
-        refreshOrientation();
+        mOnSide = mSensors.getOrientation();
+        if (mOnSide == RIGHT_SIDE) {
+            mCorrection = AZIMUTH_ORIENTATION_CORRECTION_RIGHT;
+        } else if (mOnSide == LEFT_SIDE) {
+            mCorrection = AZIMUTH_ORIENTATION_CORRECTION_LEFT;
+        }
 
         // будем рисовать только если уже определена локация и ориентация телефона удовлетворительаня
         if (mSensors.getLocation() != null
@@ -176,27 +183,6 @@ class ViewOverlay extends SurfaceView implements SurfaceHolder.Callback, Observa
         }
     }
 
-    private void refreshOrientation() {
-
-        if (mSensors.getRoll() > RIGHT_SIDE - ROLL_TOLERANCE
-                && mSensors.getRoll() < RIGHT_SIDE + ROLL_TOLERANCE) {
-
-            mOnSide = RIGHT_SIDE;
-            mCorrection = AZIMUTH_ORIENTATION_CORRECTION_RIGHT;
-        }
-
-        else if (mSensors.getRoll() > LEFT_SIDE - ROLL_TOLERANCE
-                && mSensors.getRoll() < LEFT_SIDE + ROLL_TOLERANCE) {
-
-            mOnSide = LEFT_SIDE;
-            mCorrection = AZIMUTH_ORIENTATION_CORRECTION_LEFT;
-        }
-
-        else {
-            mOnSide = NO_SIDE;
-        }
-    }
-
     private int getBitmapSizeOnDistance(float distanceTo) {
         double size = (double) getResources().getDimension(R.dimen.marker_size);
         size = size / Math.log10((double) distanceTo);
@@ -241,11 +227,27 @@ class ViewOverlay extends SurfaceView implements SurfaceHolder.Callback, Observa
             public void run() {
                 Canvas canvas = null;
                 while (!Thread.currentThread().isInterrupted()) {
+                    long startTime = System.currentTimeMillis();
                     canvas = mSurfaceHolder.lockCanvas();
                     if (null != canvas) {
                         drawMarkers(canvas);
                         mSurfaceHolder.unlockCanvasAndPost(canvas);
                     }
+                    long endTime = System.currentTimeMillis();
+                    long runTime = endTime - startTime;
+                    if (runTime < FRAME_RATE_TIME) {
+                        /*Log.i(LOG_TAG, "plenty of time, waiting");*/
+                        try {
+                            Thread.sleep(FRAME_RATE_TIME - runTime);
+                        } catch (InterruptedException ex) {
+                            /*ex.printStackTrace();*/
+                            Log.i(LOG_TAG, "stopped preview");
+                            break;
+                        }
+                    }
+                    /*else {
+                        Log.i(LOG_TAG, "need to hurry up");
+                    }*/
                 }
             }
         });
@@ -260,8 +262,9 @@ class ViewOverlay extends SurfaceView implements SurfaceHolder.Callback, Observa
 
     @Override
     public void surfaceDestroyed(SurfaceHolder holder) {
-        if (null != mDrawingThread)
+        if (null != mDrawingThread) {
             mDrawingThread.interrupt();
+        }
     }
 
     @Override
