@@ -95,6 +95,7 @@ public class FragmentOverlay extends Fragment
     private Camera mCamera;
     private SurfaceHolder mCameraHolder;
     private boolean mIsPreviewing;
+    private boolean mCameraConfigured = false;
 
     // данные, которые понадобятся для отрисовки маркеров
     private Location mQueryLocation = null; // локация, из которой запрашивались точки с сервера
@@ -103,7 +104,8 @@ public class FragmentOverlay extends Fragment
     private double mAzimuth;
     private double mPitch;
     private double mRoll;
-    private double mLastSide = ViewOverlay.NO_SIDE;
+    // если при старте в портретной ориентации повернуть на правый бок, картинка будет кверху ногами. поэтому инициализируем:
+    private double mLastSide = ViewOverlay.LEFT_SIDE;
 
     private ViewOverlay mOverlaySurface;
     private TextView mServiceText;
@@ -602,6 +604,29 @@ public class FragmentOverlay extends Fragment
 
     }
 
+    @SuppressWarnings("deprecation")
+    private Camera.Size getBestPreviewSize(int width, int height, Camera.Parameters parameters) {
+        Log.i(LOG_TAG, "getBestPreviewSize");
+
+        Camera.Size result=null;
+        for (Camera.Size size : parameters.getSupportedPreviewSizes()) {
+            if (size.width<=width && size.height<=height) {
+                if (result==null) {
+                    result=size;
+                }
+                else {
+                    int resultArea=result.width*result.height;
+                    int newArea=size.width*size.height;
+
+                    if (newArea>resultArea) {
+                        result=size;
+                    }
+                }
+            }
+        }
+        return(result);
+    }
+
     SurfaceHolder.Callback mSurfaceHolderCallback = new SurfaceHolder.Callback() {
 
         @Override
@@ -613,7 +638,19 @@ public class FragmentOverlay extends Fragment
             }
             stopPreview();
 
+            if (!mCameraConfigured) {
+                Log.i(LOG_TAG, "configuring camera");
+                Camera.Parameters parameters = mCamera.getParameters();
+                Camera.Size size = getBestPreviewSize(width, height, parameters);
+                if (size != null) {
+                    parameters.setPreviewSize(size.width, size.height);
+                    mCamera.setParameters(parameters);
+                    mCameraConfigured = true;
+                }
+            }
+
             refreshCameraRotation();
+
 
             // инициализировать поверхность отображения просмотра
             try {
