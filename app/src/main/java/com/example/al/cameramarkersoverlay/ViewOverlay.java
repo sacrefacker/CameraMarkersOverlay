@@ -8,12 +8,12 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.PorterDuff;
-import android.location.Location;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
+import android.widget.Toast;
 
 import com.example.al.cameramarkersoverlay.data.LocationMarker;
 
@@ -195,17 +195,30 @@ class ViewOverlay extends SurfaceView implements SurfaceHolder.Callback, Observa
         if (event.getAction() == MotionEvent.ACTION_DOWN) {
             float touchX = event.getX();
             float touchY = event.getY();
+            // значок предупреждения
+            if (mSensors.isWarningVisible()) {
+                if (touchX > 0 && touchX < TOUCH_SIZE &&
+                        touchY > 0 && touchY < TOUCH_SIZE) {
+                    showWarning();
+                    return true;
+                }
+            }
+            // маркеры
             if (touchY > mY - TOUCH_SIZE && touchY < mY + TOUCH_SIZE) {
                 for (int i = 0; i < mXs.size(); i++) {
                     if (touchX > mXs.get(i) - TOUCH_SIZE && touchX < mXs.get(i) + TOUCH_SIZE) {
                         openDetailView(mSensors.getMarkers().get(i));
                         // отбой, иначе будет открывать диалог для всех маркеров в области нажатия
-                        break;
+                        return true;
                     }
                 }
             }
         }
-        return true;
+        return false;
+    }
+
+    private void showWarning() {
+        Toast.makeText(getContext(), R.string.accuracy_warning, Toast.LENGTH_LONG).show();
     }
 
     // при касании маркера открываем диалог с информацией о маркере

@@ -3,7 +3,6 @@ package com.example.al.cameramarkersoverlay;
 
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.content.res.Configuration;
 import android.database.Cursor;
 import android.graphics.Color;
 import android.graphics.PixelFormat;
@@ -111,9 +110,17 @@ public class FragmentOverlay extends Fragment
     private TextView mServiceText;
     private ImageView mWarningView;
     private int mWarningStartVisibility = View.INVISIBLE;
+    private ImageView mWarningAccuracyView;
+    private int mWarningAccuracyVisibility = View.VISIBLE;
+    private ImageView mLoadingView;
 
     public FragmentOverlay() {
         // Необходим пустой публичный контейнер (не помню, по какой причине)
+    }
+
+    @Override
+    public boolean isWarningVisible() {
+        return (mWarningAccuracyVisibility == View.VISIBLE);
     }
 
     @Override
@@ -174,14 +181,6 @@ public class FragmentOverlay extends Fragment
         return onSide;
     }
 
-    private void restartCameraIfNeeded(double onSide) {
-        if (mLastSide != ViewOverlay.NO_SIDE && mLastSide != onSide) {
-            stopPreview();
-            refreshCameraRotation();
-            startPreview();
-        }
-    }
-
     @Override
     public void onCreate(Bundle savedInstanceState) {
         Log.i(LOG_TAG, "onCreate");
@@ -203,6 +202,14 @@ public class FragmentOverlay extends Fragment
                 else {
                     mLocation = location;
                 }
+                // если локация приходит с GPS, убираем значок предупреждения, и наоборот
+                if (mLocation.getProvider() != null && mLocation.getProvider().equals(LocationManager.GPS_PROVIDER)){
+                    mWarningAccuracyVisibility = View.INVISIBLE;
+                }
+                else {
+                    mWarningAccuracyVisibility = View.VISIBLE;
+                }
+                mWarningAccuracyView.setVisibility(mWarningAccuracyVisibility);
                 // если достаточно отошли от места, с которого запрашивали точки с сервера
                 // (или не запрашивали вообще), делаем это ещё раз
                 if (mQueryLocation == null
@@ -278,6 +285,24 @@ public class FragmentOverlay extends Fragment
         mWarningView.setVisibility(mWarningStartVisibility);
         warningFrame.addView(mWarningView);
         frameLayout.addView(warningFrame);
+
+        LinearLayout loadingFrame = new LinearLayout(mContext);
+        loadingFrame.setGravity(Gravity.CENTER);
+        mLoadingView = new ImageView(mContext);
+        mLoadingView.setImageResource(R.drawable.loading_warning);
+        mLoadingView.setLayoutParams(new ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT));
+        mLoadingView.setVisibility(View.INVISIBLE);
+        loadingFrame.addView(mLoadingView);
+        frameLayout.addView(loadingFrame);
+
+        mWarningAccuracyView = new ImageView(mContext);
+        mWarningAccuracyView.setImageResource(R.drawable.accuracy_warning);
+        mWarningAccuracyView.setLayoutParams(new ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT));
+        frameLayout.addView(mWarningAccuracyView);
 
         // TextView для отображения текущего значения азимута и локации
         mServiceText = new TextView(mContext);
@@ -442,12 +467,15 @@ public class FragmentOverlay extends Fragment
 
     @Override
     public void taskDownloaderStarted() {
+        mWarningView.setVisibility(View.INVISIBLE);
+        mLoadingView.setVisibility(View.VISIBLE);
         mLoaderAllowed = false;
         stopLoader();
     }
 
     @Override
     public void taskDownloadFinished(int number) {
+        mLoadingView.setVisibility(View.INVISIBLE);
         mLoaderAllowed = true;
         ChannelsContainer.getInstance(mContext).clearChangesFlag();
         goLoader();
@@ -538,15 +566,23 @@ public class FragmentOverlay extends Fragment
                 getActivity().runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-                        if (mIsVisible) {
-                            mWarningView.setVisibility(View.VISIBLE);
-                        }
-                        else {
-                            mWarningView.setVisibility(View.INVISIBLE);
+                        mWarningView.setVisibility(View.INVISIBLE);
+                        if (mLoaderAllowed){
+                            if (mIsVisible) {
+                                mWarningView.setVisibility(View.VISIBLE);
+                            }
                         }
                     }
                 });
             }
+        }
+    }
+
+    private void restartCameraIfNeeded(double onSide) {
+        if (mLastSide != ViewOverlay.NO_SIDE && mLastSide != onSide) {
+            stopPreview();
+            refreshCameraRotation();
+            startPreview();
         }
     }
 

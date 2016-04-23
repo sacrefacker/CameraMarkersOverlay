@@ -61,5 +61,6 @@
     <string name="title_activity_activity_filters">ActivityFilters</string>
     <string name="action_refresh">Refresh</string>
     <string name="action_reset">Reset changes</string>
+    <string name="accuracy_warning">The locations might be inaccurate until the app gets data from GPS sensor</string>
 
 </resources>

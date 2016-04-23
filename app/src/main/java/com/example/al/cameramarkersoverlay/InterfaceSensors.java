@@ -23,4 +23,6 @@ public interface InterfaceSensors {
 
     public double getOrientation();
 
+    public boolean isWarningVisible();
+
 }
