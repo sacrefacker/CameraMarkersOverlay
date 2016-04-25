@@ -69,13 +69,15 @@ public class FragmentOverlay extends Fragment
             MarkersContract.MarkersEntry.COLUMN_LAT,
             MarkersContract.MarkersEntry.COLUMN_LONG,
             MarkersContract.MarkersEntry.COLUMN_NAME,
-            MarkersContract.MarkersEntry.COLUMN_TYPE
+            MarkersContract.MarkersEntry.COLUMN_TYPE,
+            MarkersContract.MarkersEntry.COLUMN_IMAGE
     };
     // для получения значений из курсора
     private static final int CURSOR_COLUMN_LAT = 1;
     private static final int CURSOR_COLUMN_LONG = 2;
     private static final int CURSOR_COLUMN_NAME = 3;
     private static final int CURSOR_COLUMN_TYPE = 4;
+    private static final int CURSOR_COLUMN_IMG = 5;
 
     private Context mContext;
 
@@ -479,7 +481,7 @@ public class FragmentOverlay extends Fragment
         mLoaderAllowed = true;
         ChannelsContainer.getInstance(mContext).clearChangesFlag();
         goLoader();
-        String toastText = String.format(mContext.getString(R.string.format_markers_loaded), number);
+        String toastText = String.format(mContext.getString(R.string.format_items_loaded), number);
         Toast.makeText(mContext, toastText, Toast.LENGTH_LONG).show();
     }
 
@@ -538,6 +540,7 @@ public class FragmentOverlay extends Fragment
                     cursor.getDouble(CURSOR_COLUMN_LONG));
             locationMarker.setName(cursor.getString(CURSOR_COLUMN_NAME));
             locationMarker.setType(cursor.getString(CURSOR_COLUMN_TYPE));
+            locationMarker.setImage(cursor.getString(CURSOR_COLUMN_IMG));
             if (mLocation != null) {
                 locationMarker.setDistance(mLocation.distanceTo(locationMarker.getLocation()));
             }

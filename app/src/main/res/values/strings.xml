@@ -9,11 +9,9 @@
     </string>
 
     <string name="format_dialog">
-        <xliff:g id="long">%s</xliff:g>\n
-        Type: <xliff:g id="lat">%s</xliff:g>\n
-        Distance: <xliff:g id="lat">%1.0f</xliff:g> m\n
-        Latitude: <xliff:g id="lat">%2.6f</xliff:g>\n
-        Longitude: <xliff:g id="long">%3.6f</xliff:g>\n
+        <xliff:g id="long">%s</xliff:g>
+        (<xliff:g id="lat">%s</xliff:g>)
+         - <xliff:g id="lat">%1.0f</xliff:g>m away
     </string>
 
     <string name="format_location_bearings">
@@ -33,8 +31,8 @@
         azimuth: <xliff:g id="x">%1.0f</xliff:g>
     </string>
 
-    <string name="format_markers_loaded">
-        <xliff:g id="x">%d</xliff:g> markers downloaded
+    <string name="format_items_loaded">
+        <xliff:g id="x">%d</xliff:g> items downloaded
     </string>
 
     <string name="format_channels_loaded">

@@ -4,6 +4,7 @@ package com.example.al.cameramarkersoverlay;
 import android.app.Dialog;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.v4.app.DialogFragment;
@@ -11,20 +12,25 @@ import android.support.v7.app.AlertDialog;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.widget.ImageView;
 import android.widget.TextView;
 
-public class FragmentDialog extends DialogFragment {
+public class FragmentDialog extends DialogFragment implements InterfaceImageDownload {
     private static final String LOG_TAG = FragmentDialog.class.getSimpleName();
 
+    // TODO: убрать широту и долготу в чистовом варианте
     public static final String BUNDLE_LAT = "lat";
     public static final String BUNDLE_LONG = "long";
     public static final String BUNDLE_DIST = "dist";
     public static final String BUNDLE_NAME = "name";
     public static final String BUNDLE_TYPE = "type";
+    public static final String BUNDLE_IMG = "img";
 
     private double mLatitude = 0.0, mLongitude = 0.0;
     private double mDistance = 0.0;
-    private String mName = "", mType = "";
+    private String mName = "", mType = "", mImg = "";
+
+    private ImageView mImageView;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -37,6 +43,7 @@ public class FragmentDialog extends DialogFragment {
             mDistance = bundle.getDouble(BUNDLE_DIST);
             mName = bundle.getString(BUNDLE_NAME);
             mType = bundle.getString(BUNDLE_TYPE);
+            mImg = bundle.getString(BUNDLE_IMG);
         }
     }
 
@@ -48,7 +55,10 @@ public class FragmentDialog extends DialogFragment {
 
         TextView textView = (TextView) customDialogView.findViewById(R.id.dialog_location_text);
         textView.setText(String.format(getString(R.string.format_dialog),
-                mName, mType, mDistance, mLatitude, mLongitude));
+                mName, mType, mDistance));
+
+        mImageView = (ImageView) customDialogView.findViewById(R.id.detail_icon);
+        getImage();
 
         // Use the Builder class for convenient dialog construction
         AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
@@ -70,6 +80,16 @@ public class FragmentDialog extends DialogFragment {
 
         // Create the AlertDialog object and return it
         return builder.create();
+    }
+
+    private void getImage() {
+        new TaskDownloadImage(mImg, this).execute();
+    }
+
+    @Override
+    public void putImage(Bitmap image) {
+        Log.i(LOG_TAG, "putImage");
+        mImageView.setImageBitmap(image);
     }
 
     // при нажатии кнопки открываем Google Maps с содежращейся в маркере локацией

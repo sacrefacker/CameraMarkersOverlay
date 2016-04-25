@@ -127,7 +127,7 @@ public class FragmentFilters extends Fragment
     public void taskDownloadFinished(int number) {
         mLoaderAllowed = true;
         goLoader();
-        String toastText = String.format(mContext.getString(R.string.format_markers_loaded), number);
+        String toastText = String.format(mContext.getString(R.string.format_items_loaded), number);
         Toast.makeText(mContext, toastText, Toast.LENGTH_LONG).show();
     }
 

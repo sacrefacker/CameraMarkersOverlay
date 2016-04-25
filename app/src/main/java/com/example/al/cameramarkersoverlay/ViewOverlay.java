@@ -230,6 +230,7 @@ class ViewOverlay extends SurfaceView implements SurfaceHolder.Callback, Observa
         bundle.putDouble(FragmentDialog.BUNDLE_DIST, locationMarker.getDistance());
         bundle.putString(FragmentDialog.BUNDLE_NAME, locationMarker.getName());
         bundle.putString(FragmentDialog.BUNDLE_TYPE, locationMarker.getType());
+        bundle.putString(FragmentDialog.BUNDLE_IMG, locationMarker.getImage());
         dialogFragment.setArguments(bundle);
         dialogFragment.show(mFragmentManager, FRAGMENT_TAG);
     }

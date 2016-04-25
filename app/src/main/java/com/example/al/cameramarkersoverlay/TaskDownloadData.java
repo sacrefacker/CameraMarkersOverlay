@@ -209,6 +209,7 @@ public class TaskDownloadData extends AsyncTask<String, Void, Void> {
         final String JSON_DESC = "json";
         final String JSON_NAME = "name";
         final String JSON_TYPE = "type";
+        final String JSON_IMG = "img";
 
         try {
             JSONArray jsonArray = new JSONArray(jsonStr);
@@ -232,12 +233,14 @@ public class TaskDownloadData extends AsyncTask<String, Void, Void> {
                 String name = desc.getString(JSON_NAME);
                 // TODO: в стандартных типов может не быть
                 String type = desc.getString(JSON_TYPE);
+                String img = desc.getString(JSON_IMG);
 
                 ContentValues values = new ContentValues();
                 values.put(MarkersContract.MarkersEntry.COLUMN_LAT, lat);
                 values.put(MarkersContract.MarkersEntry.COLUMN_LONG, lon);
                 values.put(MarkersEntry.COLUMN_NAME, name);
                 values.put(MarkersEntry.COLUMN_TYPE, type);
+                values.put(MarkersEntry.COLUMN_IMAGE, img);
                 cVVector.add(values);
             }
 

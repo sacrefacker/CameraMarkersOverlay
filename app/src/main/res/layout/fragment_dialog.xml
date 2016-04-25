@@ -17,10 +17,10 @@
     <ImageView
         android:id="@+id/detail_icon"
         android:src="@android:drawable/ic_dialog_info"
+        android:scaleType="fitCenter"
         android:layout_width="match_parent"
-        android:layout_height="64dp"
-        android:scaleType="center"
-        android:background="#FFFFBB33"
+        android:layout_height="200dp"
+        android:background="#AAAAAA"
         android:contentDescription="@string/detail_icon_desc" />
 
 </LinearLayout>
